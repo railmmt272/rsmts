@@ -6,7 +6,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { UserRole } from '../users/schemas/user.schema.js';
-import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator.js';
 
 @Controller('shunting-programs')
 @UseGuards(JwtAuthGuard, RolesGuard)
