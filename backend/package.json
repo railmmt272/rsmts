@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "nest build",
+    "build": "npx tsc -p tsconfig.build.json",
     "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "seed": "npx tsx seed-users.ts && npx tsx seed-locations.ts && npx tsx seed-asset-categories.ts",
