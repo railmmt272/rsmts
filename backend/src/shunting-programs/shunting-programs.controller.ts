@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { UserRole } from '../users/schemas/user.schema.js';
+import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator.js';
 
 @Controller('shunting-programs')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -14,8 +15,8 @@ export class ShuntingProgramsController {
 
   @Post()
   @Roles(UserRole.REPAIR_SUPERVISOR, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
-  create(@Body() createShuntingProgramDto: CreateShuntingProgramDto, @Request() req: any) {
-    return this.shuntingProgramsService.create(createShuntingProgramDto, req.user.userId);
+  create(@Body() createShuntingProgramDto: CreateShuntingProgramDto, @CurrentUser() user: CurrentUserPayload) {
+    return this.shuntingProgramsService.create(createShuntingProgramDto, user._id);
   }
 
   @Get()
