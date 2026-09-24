@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, ArrowRight, AlertCircle } from 'lucide-react';
+import { X, ArrowRight, AlertCircle, ChevronDown } from 'lucide-react';
 import api from '@/services/api';
 import { Asset } from './AssetCard';
 import { useToast } from '@/contexts/ToastContext';
+import LocationSelectModal from '../CommandCenter/LocationSelectModal';
 
 interface RouteRerouteDrawerProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export default function RouteRerouteDrawer({
   const [loadingDestinations, setLoadingDestinations] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const toast = useToast();
 
   // Fetch allowed destinations when drawer opens
@@ -36,15 +38,12 @@ export default function RouteRerouteDrawer({
         setLoadingDestinations(true);
         setError('');
         
-        // Exact endpoint requested by user specification
-        const res = await api.get('/routing-rules/allowed', {
-          params: {
-            category: asset.categoryCode,
-            pipeline: asset.currentPipeline
-          }
-        });
+        const res = await api.get('/locations');
+        const activeLocations = res.data
+          .filter((loc: any) => loc.isActive)
+          .map((loc: any) => loc.code);
         
-        setDestinations(res.data);
+        setDestinations(activeLocations);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch allowed destinations');
       } finally {
@@ -142,18 +141,25 @@ export default function RouteRerouteDrawer({
                   No valid destinations available based on current routing rules.
                 </div>
               ) : (
-                <select
-                  id="destination"
-                  required
-                  value={selectedDestination}
-                  onChange={(e) => setSelectedDestination(e.target.value)}
-                  className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
-                >
-                  <option value="" disabled>Select allowed location</option>
-                  {destinations.map(dest => (
-                    <option key={dest} value={dest}>{dest}</option>
-                  ))}
-                </select>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsLocationModalOpen(true)}
+                    className="flex items-center justify-between w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
+                  >
+                    <span className={selectedDestination ? "text-gray-900 font-medium" : "text-gray-500"}>
+                      {selectedDestination || "Select location..."}
+                    </span>
+                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                  </button>
+                  <LocationSelectModal
+                    isOpen={isLocationModalOpen}
+                    onClose={() => setIsLocationModalOpen(false)}
+                    locations={destinations}
+                    onSelect={setSelectedDestination}
+                    title="Select Destination"
+                  />
+                </>
               )}
             </div>
 

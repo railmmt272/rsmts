@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { PipelineOperation } from '../../routing-rules/schemas/routing-rule.schema.js';
+import { PipelineOperation } from '../schemas/asset.schema.js';
 import { Transform } from 'class-transformer';
 
 export class RegisterAssetDto {

@@ -6,7 +6,6 @@ import { AppService } from './app.service.js';
 import { UsersModule } from './users/users.module.js';
 import { LocationsModule } from './locations/locations.module.js';
 import { AssetCategoriesModule } from './asset-categories/asset-categories.module.js';
-import { RoutingRulesModule } from './routing-rules/routing-rules.module.js';
 import { AssetsModule } from './assets/assets.module.js';
 import { MovementsModule } from './movements/movements.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -15,6 +14,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from './auth/guards/roles.guard.js';
 import { SystemModule } from './system/system.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
+import { ShuntingProgramsModule } from './shunting-programs/shunting-programs.module.js';
 
 @Module({
   imports: [
@@ -29,12 +29,12 @@ import { AnalyticsModule } from './analytics/analytics.module.js';
     UsersModule,
     LocationsModule,
     AssetCategoriesModule,
-    RoutingRulesModule,
     AssetsModule,
     MovementsModule,
     AuthModule,
     SystemModule,
     AnalyticsModule,
+    ShuntingProgramsModule,
   ],
   controllers: [AppController],
   providers: [

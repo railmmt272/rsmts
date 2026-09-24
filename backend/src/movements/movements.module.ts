@@ -4,14 +4,12 @@ import { MovementsService } from './movements.service.js';
 import { MovementsController } from './movements.controller.js';
 import { MovementLog, MovementLogSchema } from './schemas/movement-log.schema.js';
 import { AssetsModule } from '../assets/assets.module.js';
-import { RoutingRulesModule } from '../routing-rules/routing-rules.module.js';
 import { LocationsModule } from '../locations/locations.module.js';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: MovementLog.name, schema: MovementLogSchema }]),
     AssetsModule, // To get MongooseModule for Asset and AssetsService
-    RoutingRulesModule,
     LocationsModule,
   ],
   controllers: [MovementsController],

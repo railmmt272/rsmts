@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import { Asset, AssetDocument, AssetStatus } from '../assets/schemas/asset.schema.js';
 import { MovementLog, MovementLogDocument } from './schemas/movement-log.schema.js';
 import { CreateMovementDto } from './dto/create-movement.dto.js';
-import { RoutingRulesService } from '../routing-rules/routing-rules.service.js';
 import { LocationsService } from '../locations/locations.service.js';
 
 @Injectable()
@@ -12,7 +11,6 @@ export class MovementsService {
   constructor(
     @InjectModel(Asset.name) private assetModel: mongoose.Model<AssetDocument>,
     @InjectModel(MovementLog.name) private movementLogModel: mongoose.Model<MovementLogDocument>,
-    @Inject(RoutingRulesService) private routingRulesService: RoutingRulesService,
     @Inject(LocationsService) private locationsService: LocationsService,
     @InjectConnection() private connection: mongoose.Connection,
   ) {}
@@ -44,7 +42,7 @@ export class MovementsService {
 
         const fromLocationCode = asset.currentLocationCode;
 
-        // 2. Validate destination exists and is physical
+        // 2. Validate destination exists
         const toLocation = await this.locationsService.findOne(toLocationCode);
         if (!toLocation) {
           throw new BadRequestException(`Location ${toLocationCode} does not exist.`);
@@ -52,22 +50,8 @@ export class MovementsService {
         if (!toLocation.isActive) {
           throw new BadRequestException(`Location ${toLocationCode} is inactive.`);
         }
-        if (toLocation.locationType === 'GROUP') { // wait, locationType is an enum, let's just use string literal or we can import LocationType
-          throw new BadRequestException(`Cannot move asset to a GROUP location (${toLocationCode}).`);
-        }
 
-        // 3. Validate routing eligibility
-        const allowedLocations = await this.routingRulesService.getAllowedLocations(
-          asset.categoryCode,
-          asset.currentPipeline,
-        );
-
-        const isAllowed = allowedLocations.includes(toLocationCode);
-        if (!isAllowed) {
-          throw new BadRequestException(
-            `Location ${toLocationCode} is not an eligible routing destination for category ${asset.categoryCode} in pipeline ${asset.currentPipeline}.`,
-          );
-        }
+        // 3. Routing validation removed - assets can be moved to any active location
 
         // 4. Create MovementLog
         const movementLogs = await this.movementLogModel.create(

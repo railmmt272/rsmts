@@ -7,7 +7,8 @@ import {
   BarChart,
   Users,
   Settings,
-  LucideIcon
+  LucideIcon,
+  ListTodo
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -19,6 +20,7 @@ interface NavItem {
 
 const OPERATIONS_NAV: NavItem[] = [
   { label: 'Command Center', href: '/dashboard/command-center', icon: Wrench },
+  { label: 'Shunting Programs', href: '/dashboard/shunting-programs', icon: ListTodo },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
 ];
 

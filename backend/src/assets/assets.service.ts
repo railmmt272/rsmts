@@ -5,9 +5,7 @@ import { Asset, AssetDocument, AssetStatus } from './schemas/asset.schema.js';
 import { RegisterAssetDto } from './dto/register-asset.dto.js';
 import { AssetCategoriesService } from '../asset-categories/asset-categories.service.js';
 import { LocationsService } from '../locations/locations.service.js';
-import { RoutingRulesService } from '../routing-rules/routing-rules.service.js';
-import { LocationType } from '../locations/schemas/location.schema.js';
-import { PipelineOperation } from '../routing-rules/schemas/routing-rule.schema.js';
+import { PipelineOperation } from './schemas/asset.schema.js';
 import { IdentificationType } from '../asset-categories/schemas/asset-category.schema.js';
 import { UpdateAssetStatusDto } from './dto/update-asset-status.dto.js';
 import { CurrentUserPayload } from '../auth/decorators/current-user.decorator.js';
@@ -19,7 +17,6 @@ export class AssetsService {
     @InjectModel(Asset.name) private assetModel: mongoose.Model<AssetDocument>,
     @Inject(AssetCategoriesService) private assetCategoriesService: AssetCategoriesService,
     @Inject(LocationsService) private locationsService: LocationsService,
-    @Inject(RoutingRulesService) private routingRulesService: RoutingRulesService,
   ) {}
 
   async registerAsset(dto: RegisterAssetDto, user: CurrentUserPayload): Promise<Asset> {
@@ -65,21 +62,13 @@ export class AssetsService {
       throw new BadRequestException(`Asset number ${dto.assetNumber} is already registered.`);
     }
 
-    // 7 & 8. Verify Location exists, is active, and is PHYSICAL
+    // 7. Verify Location exists and is active
     const location = await this.locationsService.findOne(dto.currentLocationCode);
     if (!location.isActive) {
       throw new BadRequestException(`Location ${dto.currentLocationCode} is inactive.`);
     }
-    if (location.locationType === LocationType.GROUP) {
-      throw new BadRequestException(`Location ${dto.currentLocationCode} is a GROUP location and cannot hold assets.`);
-    }
 
-    // 9. Routing eligibility validation
-    const allowedLocations = await this.routingRulesService.getAllowedLocations(dto.categoryCode, dto.operation);
-    if (!allowedLocations.includes(dto.currentLocationCode)) {
-      throw new BadRequestException(`Location ${dto.currentLocationCode} is not permitted for category ${dto.categoryCode} in operation ${dto.operation}`);
-    }
-
+    // 9. Routing eligibility validation removed - any asset can go to any location
     // 10. Remark is non-empty (handled by DTO @IsNotEmpty / trim)
 
     // 11. Derive pipeline/status

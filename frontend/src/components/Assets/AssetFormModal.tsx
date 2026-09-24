@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
+import LocationSelectModal from '../CommandCenter/LocationSelectModal';
 import api from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,11 +40,7 @@ interface AssetCategory {
 interface Location {
   code: string;
   name: string;
-  locationType: string;
-  category: string;
-  pipelines: string[];
-  parentCode?: string;
-  children: Location[];
+  isActive: boolean;
 }
 
 export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit }: AssetFormModalProps) {
@@ -63,11 +60,10 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
   const [selectedParent, setSelectedParent] = useState<string>('');
   const [selectedChild, setSelectedChild] = useState<string>('');
 
-  // Location Selection (Cascading)
-  const [locationHierarchy, setLocationHierarchy] = useState<Location[]>([]);
-  const [locL1, setLocL1] = useState<string>('');
-  const [locL2, setLocL2] = useState<string>('');
-  const [locL3, setLocL3] = useState<string>('');
+  // Location Selection
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   
   // Edit mode Status
   const [status, setStatus] = useState('');
@@ -90,10 +86,10 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
     try {
       const [catsRes, locsRes] = await Promise.all([
         api.get('/asset-categories/hierarchy'),
-        api.get('/locations/hierarchy')
+        api.get('/locations')
       ]);
       setCategoryHierarchy(catsRes.data);
-      setLocationHierarchy(locsRes.data);
+      setLocations(locsRes.data.filter((l: Location) => l.isActive));
     } catch (err) {
       console.error(err);
       setError('Failed to load form data.');
@@ -108,9 +104,7 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
     setSelectedGrandparent('');
     setSelectedParent('');
     setSelectedChild('');
-    setLocL1('');
-    setLocL2('');
-    setLocL3('');
+    setSelectedLocation('');
     setError(null);
   };
 
@@ -136,28 +130,6 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
     }
   }, [operation, grandparentOptions, selectedGrandparent]);
 
-
-  // Location filtering logic
-  const isLocAllowed = (n: Location) => n.pipelines.includes(operation) || n.pipelines.includes('COMMON');
-  const hasAllowedDescendant = (n: Location): boolean => {
-    if (!n.children || n.children.length === 0) return isLocAllowed(n) && n.locationType !== 'GROUP';
-    return n.children.some(hasAllowedDescendant);
-  };
-
-  const l1Options = locationHierarchy.filter(n => hasAllowedDescendant(n) || (isLocAllowed(n) && n.locationType !== 'GROUP'));
-  const selectedL1Node = l1Options.find(n => n.code === locL1);
-  const l2Options = selectedL1Node?.children?.filter(n => hasAllowedDescendant(n) || (isLocAllowed(n) && n.locationType !== 'GROUP')) || [];
-  const selectedL2Node = l2Options.find(n => n.code === locL2);
-  const l3Options = selectedL2Node?.children?.filter(n => hasAllowedDescendant(n) || (isLocAllowed(n) && n.locationType !== 'GROUP')) || [];
-
-  let finalLocationCode = '';
-  if (locL3 && l3Options.find(n => n.code === locL3 && n.locationType !== 'GROUP')) {
-    finalLocationCode = locL3;
-  } else if (locL2 && l2Options.find(n => n.code === locL2 && n.locationType !== 'GROUP')) {
-    finalLocationCode = locL2;
-  } else if (locL1 && l1Options.find(n => n.code === locL1 && n.locationType !== 'GROUP')) {
-    finalLocationCode = locL1;
-  }
 
   const getIdentificationRule = () => {
     let rule: IdentificationRule | undefined = undefined;
@@ -212,14 +184,14 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
         if (!finalCategoryCode) {
           throw new Error('Please select an Asset Category.');
         }
-        if (!finalLocationCode) {
+        if (!selectedLocation) {
           throw new Error('Please select a specific physical location.');
         }
         await api.post('/assets', {
           operation,
           categoryCode: finalCategoryCode,
           assetNumber,
-          currentLocationCode: finalLocationCode,
+          currentLocationCode: selectedLocation,
           remark
         });
         toast.success(`Asset ${assetNumber} registered successfully!`);
@@ -239,8 +211,8 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-white/60 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-2xl bg-white border-2 border-gray-600 rounded-md shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-600 bg-white">
+      <div className="relative w-full max-w-2xl bg-white border-2 border-gray-600 rounded-md shadow-2xl overflow-hidden mt-16 max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-600 bg-white sticky top-0 z-10">
           <h3 className="text-lg font-semibold text-gray-900">
             {assetToEdit ? 'Change Asset Status' : 'Register New Asset'}
           </h3>
@@ -252,291 +224,253 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
           </button>
         </div>
 
-        {error && (
-          <div className="m-6 mb-0 p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-md">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-8">
-          {assetToEdit ? (
-            <div className="space-y-6">
-              {/* EDIT MODE */}
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Asset Number</label>
-                  <div className="p-3 bg-gray-50 border-2 border-gray-600 rounded-md text-gray-900 font-medium">
-                    {assetToEdit.assetNumber}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Current Status</label>
-                  <div className="p-3 bg-gray-50 border-2 border-gray-600 rounded-md text-gray-900 font-medium">
-                    {assetToEdit.status}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">New Status</label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: 'ACTIVE', label: 'Active' },
-                    { value: 'IN_REPAIR', label: 'In Repair' },
-                    { value: 'IN_MANUFACTURING', label: 'In Manufacturing' },
-                    { value: 'CONDEMNED', label: 'Condemned' },
-                    { value: 'READY_TO_DISPATCH', label: 'Ready to Dispatch' },
-                    { value: 'DISPATCHED', label: 'Dispatched' },
-                  ].map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setStatus(value)}
-                      className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
-                        status === value
-                          ? 'border-gray-900 bg-gray-200 text-gray-900'
-                          : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Remark</label>
-                <textarea
-                  required
-                  value={remark}
-                  onChange={(e) => setRemark(e.target.value)}
-                  className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white text-gray-900 transition-colors sm:text-sm"
-                  rows={3}
-                  placeholder="Reason for status change..."
-                />
-              </div>
+        <div className="overflow-y-auto flex-1">
+          {error && (
+            <div className="m-6 mb-0 p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-md">
+              {error}
             </div>
-          ) : (
-            <div className="space-y-8">
-              {/* CREATE MODE */}
-              
-              {/* Pipeline Selection */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Pipeline</label>
-                <div className="flex gap-3">
-                  {['REPAIRING', 'MANUFACTURING'].map(op => {
-                    if (user?.role === 'MANUFACTURING_SUPERVISOR' && op !== 'MANUFACTURING') return null;
-                    if (user?.role === 'REPAIR_SUPERVISOR' && op !== 'REPAIRING') return null;
-                    return (
-                      <button
-                        key={op}
-                        type="button"
-                        onClick={() => {
-                          setOperation(op);
-                          setLocL1('');
-                          setLocL2('');
-                          setLocL3('');
-                        }}
-                        className={`px-5 py-2.5 rounded-md text-sm font-medium border-2 transition-colors ${
-                          operation === op
-                            ? 'border-gray-900 bg-gray-200 text-gray-900'
-                            : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        {op}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+          )}
 
-              {/* Category Selection */}
-              <div className="space-y-4 p-4 rounded-md border-2 border-gray-600 bg-white">
+          <form onSubmit={handleSubmit} className="p-6 space-y-8">
+            {assetToEdit ? (
+              <div className="space-y-6">
+                {/* EDIT MODE */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Asset Number</label>
+                    <div className="p-3 bg-gray-50 border-2 border-gray-600 rounded-md text-gray-900 font-medium">
+                      {assetToEdit.assetNumber}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Current Status</label>
+                    <div className="p-3 bg-gray-50 border-2 border-gray-600 rounded-md text-gray-900 font-medium">
+                      {assetToEdit.status.replace(/_/g, ' ')}
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Asset Type</label>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">New Status</label>
                   <div className="flex flex-wrap gap-2">
-                    {grandparentOptions.map(c => (
+                    {[
+                      { value: 'ACTIVE', label: 'Active' },
+                      { value: 'IN_REPAIR', label: 'In Repair' },
+                      { value: 'IN_MANUFACTURING', label: 'In Manufacturing' },
+                      { value: 'CONDEMNED', label: 'Condemned' },
+                      { value: 'READY_TO_DISPATCH', label: 'Ready to Dispatch' },
+                      { value: 'DISPATCHED', label: 'Dispatched' },
+                    ].map(({ value, label }) => (
                       <button
-                        key={c.code}
+                        key={value}
                         type="button"
-                        onClick={() => {
-                          setSelectedGrandparent(c.code);
-                          setSelectedParent('');
-                          setSelectedChild('');
-                        }}
+                        onClick={() => setStatus(value)}
                         className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
-                          selectedGrandparent === c.code
+                          status === value
                             ? 'border-gray-900 bg-gray-200 text-gray-900'
                             : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
                         }`}
                       >
-                        {c.name}
+                        {label}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                {parentOptions.length > 0 && (
-                  <div className="pt-2 animate-in fade-in slide-in-from-top-2">
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Category</label>
-                    <div className="flex flex-wrap gap-2">
-                      {parentOptions.map(c => (
-                        <button
-                          key={c.code}
-                          type="button"
-                          onClick={() => {
-                            setSelectedParent(c.code);
-                            setSelectedChild('');
-                          }}
-                          className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
-                            selectedParent === c.code
-                              ? 'border-gray-900 bg-gray-200 text-gray-900'
-                              : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {c.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {childOptions.length > 0 && (
-                  <div className="pt-2 animate-in fade-in slide-in-from-top-2">
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Model</label>
-                    <div className="flex flex-wrap gap-2">
-                      {childOptions.map(c => (
-                        <button
-                          key={c.code}
-                          type="button"
-                          onClick={() => setSelectedChild(c.code)}
-                          className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
-                            selectedChild === c.code
-                              ? 'border-gray-900 bg-gray-200 text-gray-900'
-                              : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {c.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Location Selection (Cascading) */}
-              <div className="space-y-4 p-4 rounded-md border-2 border-gray-600 bg-gray-50">
-                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Physical Location</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <select
-                      value={locL1}
-                      onChange={(e) => {
-                        setLocL1(e.target.value);
-                        setLocL2('');
-                        setLocL3('');
-                      }}
-                      className="block w-full border-2 border-gray-600 rounded-md p-2.5 focus:outline-none focus:border-gray-900 bg-white text-sm cursor-pointer"
-                    >
-                      <option value="">Select Area...</option>
-                      {l1Options.map(n => (
-                        <option key={n.code} value={n.code}>
-                          {n.name} ({n.locationType.replace(/_/g, ' ')})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {l2Options.length > 0 && (
-                    <div className="animate-in fade-in slide-in-from-left-2">
-                      <select
-                        value={locL2}
-                        onChange={(e) => {
-                          setLocL2(e.target.value);
-                          setLocL3('');
-                        }}
-                        className="block w-full border-2 border-gray-600 rounded-md p-2.5 focus:outline-none focus:border-gray-900 bg-white text-sm cursor-pointer"
-                      >
-                        <option value="">Select Sub-Area...</option>
-                        {l2Options.map(n => (
-                          <option key={n.code} value={n.code}>
-                            {n.name} ({n.locationType.replace(/_/g, ' ')})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {l3Options.length > 0 && (
-                    <div className="animate-in fade-in slide-in-from-left-2">
-                      <select
-                        value={locL3}
-                        onChange={(e) => setLocL3(e.target.value)}
-                        className="block w-full border-2 border-gray-600 rounded-md p-2.5 focus:outline-none focus:border-gray-900 bg-white text-sm cursor-pointer"
-                      >
-                        <option value="">Select Specific Line...</option>
-                        {l3Options.map(n => (
-                          <option key={n.code} value={n.code}>
-                            {n.name} ({n.code})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 flex items-center">
-                    Asset Number 
-                    {idRule && (
-                      <span className="text-gray-400 normal-case font-normal ml-1">
-                        ({idRule.length} {idRule.type === 'NUMERIC' ? 'digits' : 'chars'})
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={assetNumber}
-                    onChange={handleAssetNumberChange}
-                    className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
-                    placeholder={idRule?.type === 'NUMERIC' ? "e.g. 12345" : "e.g. ABCDE"}
-                  />
-                </div>
-                <div>
-                   <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Remark</label>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Remark</label>
                   <textarea
                     required
                     value={remark}
                     onChange={(e) => setRemark(e.target.value)}
-                    className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
-                    rows={2}
-                    placeholder="Initial registration..."
+                    className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white text-gray-900 transition-colors sm:text-sm"
+                    rows={3}
+                    placeholder="Reason for status change..."
                   />
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-8">
+                {/* CREATE MODE */}
+                
+                {/* Pipeline Selection */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Pipeline</label>
+                  <div className="flex gap-3">
+                    {['REPAIRING', 'MANUFACTURING'].map(op => {
+                      if (user?.role === 'MANUFACTURING_SUPERVISOR' && op !== 'MANUFACTURING') return null;
+                      if (user?.role === 'REPAIR_SUPERVISOR' && op !== 'REPAIRING') return null;
+                      return (
+                        <button
+                          key={op}
+                          type="button"
+                          onClick={() => {
+                            setOperation(op);
+                            setSelectedLocation('');
+                          }}
+                          className={`px-5 py-2.5 rounded-md text-sm font-medium border-2 transition-colors ${
+                            operation === op
+                              ? 'border-gray-900 bg-gray-200 text-gray-900'
+                              : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {op}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-          <div className="pt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2.5 rounded-md border-2 border-gray-600 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2.5 rounded-md border-2 border-gray-900 bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Saving...' : (assetToEdit ? 'Update Status' : 'Register Asset')}
-            </button>
-          </div>
-        </form>
+                {/* Category Selection */}
+                <div className="space-y-4 p-4 rounded-md border-2 border-gray-600 bg-white">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Asset Type</label>
+                    <div className="flex flex-wrap gap-2">
+                      {grandparentOptions.map(c => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedGrandparent(c.code);
+                            setSelectedParent('');
+                            setSelectedChild('');
+                          }}
+                          className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
+                            selectedGrandparent === c.code
+                              ? 'border-gray-900 bg-gray-200 text-gray-900'
+                              : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {parentOptions.length > 0 && (
+                    <div className="pt-2 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Category</label>
+                      <div className="flex flex-wrap gap-2">
+                        {parentOptions.map(c => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            onClick={() => {
+                              setSelectedParent(c.code);
+                              setSelectedChild('');
+                            }}
+                            className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
+                              selectedParent === c.code
+                                ? 'border-gray-900 bg-gray-200 text-gray-900'
+                                : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {childOptions.length > 0 && (
+                    <div className="pt-2 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Model</label>
+                      <div className="flex flex-wrap gap-2">
+                        {childOptions.map(c => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            onClick={() => setSelectedChild(c.code)}
+                            className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
+                              selectedChild === c.code
+                                ? 'border-gray-900 bg-gray-200 text-gray-900'
+                                : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Location Selection (Flat List) */}
+                <div className="space-y-4 p-4 rounded-md border-2 border-gray-600 bg-gray-50">
+                  <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Physical Location</h4>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setIsLocationModalOpen(true)}
+                      className="flex items-center justify-between w-full border-2 border-gray-600 rounded-md p-2.5 focus:outline-none focus:border-gray-900 bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
+                    >
+                      <span className={selectedLocation ? "text-gray-900 font-medium" : "text-gray-500"}>
+                        {selectedLocation ? `${locations.find(l => l.code === selectedLocation)?.name || selectedLocation} (${selectedLocation})` : "Select Initial Location..."}
+                      </span>
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    </button>
+                    <LocationSelectModal
+                      isOpen={isLocationModalOpen}
+                      onClose={() => setIsLocationModalOpen(false)}
+                      locations={locations}
+                      onSelect={setSelectedLocation}
+                      title="Select Initial Location"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 flex items-center">
+                      Asset Number 
+                      {idRule && (
+                        <span className="text-gray-400 normal-case font-normal ml-1">
+                          ({idRule.length} {idRule.type === 'NUMERIC' ? 'digits' : 'chars'})
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={assetNumber}
+                      onChange={handleAssetNumberChange}
+                      className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
+                      placeholder={idRule?.type === 'NUMERIC' ? "e.g. 12345" : "e.g. ABCDE"}
+                    />
+                  </div>
+                  <div>
+                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Remark</label>
+                    <textarea
+                      required
+                      value={remark}
+                      onChange={(e) => setRemark(e.target.value)}
+                      className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
+                      rows={2}
+                      placeholder="Initial registration..."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-6 flex justify-end gap-3 sticky bottom-0 bg-white/90 backdrop-blur pb-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-md border-2 border-gray-600 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2.5 rounded-md border-2 border-gray-900 bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Saving...' : (assetToEdit ? 'Update Status' : 'Register Asset')}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

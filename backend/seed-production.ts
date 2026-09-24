@@ -3,14 +3,15 @@ import { AppModule } from './src/app.module.js';
 import { UsersService } from './src/users/users.service.js';
 import { UserRole } from './src/users/schemas/user.schema.js';
 import { LocationsService } from './src/locations/locations.service.js';
-import { LocationCategory, LocationType, LocationPipeline, LocationRole } from './src/locations/schemas/location.schema.js';
 import { AssetCategoriesService } from './src/asset-categories/asset-categories.service.js';
 import { AssetCategoryLevel } from './src/asset-categories/schemas/asset-category.schema.js';
 import { Model } from 'mongoose';
 import { LocationDocument } from './src/locations/schemas/location.schema.js';
 import { AssetCategoryDocument } from './src/asset-categories/schemas/asset-category.schema.js';
-import { RoutingRulesService } from './src/routing-rules/routing-rules.service.js';
-import { PipelineOperation } from './src/routing-rules/schemas/routing-rule.schema.js';
+
+function generateCode(name: string): string {
+  return name.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase().replace(/_+/g, '_').replace(/_$/, '');
+}
 
 async function bootstrap() {
   console.log('--- PRODUCTION SEED INITIATED ---');
@@ -85,107 +86,54 @@ async function bootstrap() {
   console.log(`✅ Processed ${catSuccessCount}/${categoriesToSeed.length} asset categories safely.`);
 
 
-  console.log('\n[3/3] SEEDING LOCATIONS (Without Deleting Existing)...');
-  const locationsToSeed = [
-    // Top-Level Groups
-    { code: 'PARKING_YARD', name: 'Parking Yard', category: LocationCategory.COMMON, locationType: LocationType.GROUP, pipelines: [LocationPipeline.COMMON], role: LocationRole.PARKING },
-    { code: 'WAGON_REPAIR', name: 'Wagon Repair', category: LocationCategory.REPAIRING, locationType: LocationType.GROUP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR },
-    { code: 'WAGON_QA', name: 'Wagon QA', category: LocationCategory.REPAIRING, locationType: LocationType.GROUP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.QA },
-    { code: 'LOCO_REPAIR', name: 'Loco Repair', category: LocationCategory.REPAIRING, locationType: LocationType.GROUP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR },
-    { code: 'TOWER_CAR_REPAIR', name: 'Tower Car Repair', category: LocationCategory.REPAIRING, locationType: LocationType.GROUP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR },
-    { code: 'WAGON_MANUFACTURING', name: 'Wagon Manufacturing', category: LocationCategory.MANUFACTURING, locationType: LocationType.GROUP, pipelines: [LocationPipeline.MANUFACTURING], role: LocationRole.MANUFACTURING },
-    
-    // Common Top Level Physical
-    { code: 'NSY', name: 'NSY', category: LocationCategory.COMMON, locationType: LocationType.YARD, pipelines: [LocationPipeline.COMMON], role: LocationRole.ENTRY },
-    { code: 'TRIAL_YARD', name: 'Trial Yard', category: LocationCategory.COMMON, locationType: LocationType.TRIAL_YARD, pipelines: [LocationPipeline.COMMON], role: LocationRole.TESTING },
-    { code: 'EXIT_YARD', name: 'Exit Yard', category: LocationCategory.COMMON, locationType: LocationType.EXIT_YARD, pipelines: [LocationPipeline.COMMON], role: LocationRole.EXIT },
+  console.log('\n[3/3] SEEDING LOCATIONS (Consolidated)...');
+  try {
+    await locationModel.collection.drop();
+    console.log('✅ Dropped existing locations collection.');
+  } catch (err: any) {
+    if (err.code !== 26) { // 26 is namespace not found
+      console.error('❌ Failed to drop locations collection:', err.message);
+    }
+  }
 
-    // Repair Top Level Physical
-    { code: 'WHEEL_PARK_LINE', name: 'Wheel Park Line', category: LocationCategory.REPAIRING, locationType: LocationType.SPECIALTY_LINE, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.HOLDING },
-
-    // Nested Groups
-    { code: 'NORTH_YARD', name: 'North Yard', category: LocationCategory.COMMON, locationType: LocationType.GROUP, pipelines: [LocationPipeline.COMMON], role: LocationRole.PARKING, parentCode: 'PARKING_YARD' },
-    { code: 'SOUTH_YARD', name: 'South Yard', category: LocationCategory.COMMON, locationType: LocationType.GROUP, pipelines: [LocationPipeline.COMMON], role: LocationRole.PARKING, parentCode: 'PARKING_YARD' },
-    
-    // Wagon Repair Shops
-    ...Array.from({ length: 4 }).map((_, i) => ({
-      code: `WRS_${i+1}`, name: `Wagon Repair Shop ${i+1}`, category: LocationCategory.REPAIRING, locationType: LocationType.REPAIR_SHOP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR, parentCode: 'WAGON_REPAIR'
-    })),
-    { code: 'WRS_5', name: 'Wagon QA Shop 5', category: LocationCategory.REPAIRING, locationType: LocationType.QA, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.QA, parentCode: 'WAGON_QA' },
-
-    // Loco Repair
-    { code: 'DPS', name: 'DPS', category: LocationCategory.REPAIRING, locationType: LocationType.REPAIR_SHOP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR, parentCode: 'LOCO_REPAIR' },
-    { code: 'ELECTRIC_SHED', name: 'Electric Shed', category: LocationCategory.REPAIRING, locationType: LocationType.REPAIR_SHOP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR, parentCode: 'LOCO_REPAIR' },
-    
-    // Tower Car
-    { code: 'TOWER_CAR_LINE', name: 'Tower Car Line', category: LocationCategory.REPAIRING, locationType: LocationType.SPECIALTY_LINE, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR, parentCode: 'TOWER_CAR_REPAIR' },
-    
-    // Manufacturing
-    { code: `GIF_SHOP`, name: `GIF Shop`, category: LocationCategory.MANUFACTURING, locationType: LocationType.MANUFACTURING_SHOP, pipelines: [LocationPipeline.MANUFACTURING], role: LocationRole.MANUFACTURING, parentCode: 'WAGON_MANUFACTURING' },
-    
-    // Crane
-    { code: 'CRANE_REPAIR', name: 'Crane Repair', category: LocationCategory.REPAIRING, locationType: LocationType.GROUP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR },
-    { code: 'CRANE_REPAIR_SHOP', name: 'Crane Repair Shop', category: LocationCategory.REPAIRING, locationType: LocationType.REPAIR_SHOP, pipelines: [LocationPipeline.REPAIRING], role: LocationRole.REPAIR, parentCode: 'CRANE_REPAIR' },
-    { code: 'CRANE_MANUFACTURING', name: 'Crane Manufacturing', category: LocationCategory.MANUFACTURING, locationType: LocationType.GROUP, pipelines: [LocationPipeline.MANUFACTURING], role: LocationRole.MANUFACTURING },
-    { code: 'CRANE_MANUFACTURING_SHOP', name: 'Crane Manufacturing Shop', category: LocationCategory.MANUFACTURING, locationType: LocationType.MANUFACTURING_SHOP, pipelines: [LocationPipeline.MANUFACTURING], role: LocationRole.MANUFACTURING, parentCode: 'CRANE_MANUFACTURING' },
-
-    // Physical Lines (1-28 for North, 29-56 for South)
-    ...Array.from({ length: 28 }).map((_, i) => ({
-      code: `YARD_NORTH_LINE_${(i+1).toString().padStart(2, '0')}`, name: `Yard North Line ${(i+1).toString().padStart(2, '0')}`, category: LocationCategory.COMMON, locationType: LocationType.PARKING_LINE, pipelines: [LocationPipeline.COMMON], role: LocationRole.PARKING, parentCode: 'NORTH_YARD'
-    })),
-    ...Array.from({ length: 28 }).map((_, i) => ({
-      code: `YARD_SOUTH_LINE_${(i+29).toString().padStart(2, '0')}`, name: `Yard South Line ${(i+29).toString().padStart(2, '0')}`, category: LocationCategory.COMMON, locationType: LocationType.PARKING_LINE, pipelines: [LocationPipeline.COMMON], role: LocationRole.PARKING, parentCode: 'SOUTH_YARD'
-    }))
+  const locationsAndShops = [
+    'NSY Line no. 1', 'NSY Line no. 2', 'RB Line', 'MDS Line (North)',
+    'WRS-5 West Line (North)', 'Challan Line (North)', 'Crane Line', 'NSY D Line',
+    'DPS North Line', 'DPS Load Box', 'Cleaning Area A', 'Cleaning Area B',
+    'Cleaning Area C', 'Cleaning Area D', 'WRS-2 C/Line', 'MO Line',
+    'C-Ward (East)', 'C-Ward (West)', 'Stripping Yard', 'Meat Market Line(East)',
+    'Meat Market Line(West)', 'Old Paint Shed (East)', 'Old Paint Shed (West)', 'BST Main Line',
+    'BST Middle Line', 'BST Dug Line', 'RM Main Line', 'RM Middle Line',
+    'RM Dug Line', 'Tower Car Line', 'Nath Line', 'WC Main Line',
+    'WC Middle Line', 'WC Dug Line', 'New Line', 'Dhobighat Line',
+    'SSY New Line (East)', 'SSY New Line (West)', 'Steel Foundry Line', 'YS/WRS-3 Line',
+    'Sick Line', 'Bahar Line', 'SSY Bagal/Main Line', 'LTC Line',
+    'GIF Office Line', 'GIF Centre Line(North)', '20T Way', '140T Way (East)',
+    '140T Way (West)', 'Trial Yard (East)', 'Trial Yard (West)', 'GIF Centre Line(South)',
+    'GIF Paint Shed Line(East)', 'GIF Paint Shed Line(West)', 'Pig Line', 'Sleeper Line',
+    'SSY Bank Line', 'SSY Muck Line', 'SSY Billet Line', 'Forge Shop Line',
+    'WRS-4 Line', 'WRS-5 Line (East)', 'WRS-5 West Line (South)', 'MDS Line (South)',
+    'Wheel Shop Line', 'BTPN Line', 'DPS South Line (West)', 'Challan Line(South)',
+    // Shops
+    'WRS 1 to 4', 'GIF Shop', 'BST Shop', 'DPS South', 'DPS North', 'BST', 'WRS 5', 'Crane Shop', 'DPS(S) for wagon repair'
   ];
 
   let locSuccessCount = 0;
-  for (const loc of locationsToSeed) {
+  for (const name of locationsAndShops) {
+    const code = generateCode(name);
     try {
       await locationModel.updateOne(
-        { code: loc.code },
-        { $set: loc },
+        { code },
+        { $set: { code, name, isActive: true } },
         { upsert: true }
       );
       locSuccessCount++;
     } catch (err: any) {
-      console.error(`❌ Failed to upsert location ${loc.code}:`, err.message);
+      console.error(`❌ Failed to upsert location ${code}:`, err.message);
     }
   }
-  console.log(`✅ Processed ${locSuccessCount}/${locationsToSeed.length} locations safely.`);
+  console.log(`✅ Processed ${locSuccessCount}/${locationsAndShops.length} locations safely.`);
 
-  console.log('\n[4/4] SEEDING ROUTING RULES...');
-  const routingRulesService = app.get(RoutingRulesService);
-  const routingRuleModel = routingRulesService['routingRuleModel'];
-
-  const rules = [
-    { assetCategoryCode: 'WAGON', pipeline: PipelineOperation.REPAIRING, locationCode: 'WRS_1', remark: 'Authorized wagon repair location for work assigned to WRS_1.' },
-    { assetCategoryCode: 'WAGON', pipeline: PipelineOperation.REPAIRING, locationCode: 'WRS_2', remark: 'Authorized wagon repair location for work assigned to WRS_2.' },
-    { assetCategoryCode: 'WAGON', pipeline: PipelineOperation.REPAIRING, locationCode: 'WRS_3', remark: 'Authorized wagon repair location for work assigned to WRS_3.' },
-    { assetCategoryCode: 'WAGON', pipeline: PipelineOperation.REPAIRING, locationCode: 'WRS_4', remark: 'Authorized wagon repair location for work assigned to WRS_4.' },
-    { assetCategoryCode: 'WAGON', pipeline: PipelineOperation.REPAIRING, locationCode: 'WRS_5', remark: 'Designated QA location for wagon repair inspection.' },
-    { assetCategoryCode: 'WAGON', pipeline: PipelineOperation.REPAIRING, locationCode: 'WHEEL_PARK_LINE', remark: 'Holding location for wagons awaiting wheel sets or component repairs.' },
-    { assetCategoryCode: 'WAGON', pipeline: PipelineOperation.MANUFACTURING, locationCode: 'GIF_SHOP', remark: 'Authorized wagon manufacturing location.' },
-    { assetCategoryCode: 'LOCO', pipeline: PipelineOperation.REPAIRING, locationCode: 'DPS', remark: 'Primary diesel locomotive repair shed.' },
-    { assetCategoryCode: 'LOCO', pipeline: PipelineOperation.REPAIRING, locationCode: 'ELECTRIC_SHED', remark: 'Primary electric locomotive repair shed.' },
-    { assetCategoryCode: 'CRANE', pipeline: PipelineOperation.REPAIRING, locationCode: 'CRANE_REPAIR_SHOP', remark: 'Dedicated facility for crane repair operations.' },
-    { assetCategoryCode: 'CRANE', pipeline: PipelineOperation.MANUFACTURING, locationCode: 'CRANE_MANUFACTURING_SHOP', remark: 'Dedicated facility for crane manufacturing operations.' },
-    { assetCategoryCode: 'TOWER_CAR', pipeline: PipelineOperation.REPAIRING, locationCode: 'TOWER_CAR_LINE', remark: 'Designated line for tower car repair and maintenance.' }
-  ];
-
-  let ruleSuccessCount = 0;
-  for (const rule of rules) {
-    try {
-      await routingRuleModel.updateOne(
-        { assetCategoryCode: rule.assetCategoryCode, pipeline: rule.pipeline, locationCode: rule.locationCode },
-        { $set: rule },
-        { upsert: true }
-      );
-      ruleSuccessCount++;
-    } catch (err: any) {
-      console.error(`❌ Failed to upsert rule ${rule.assetCategoryCode}->${rule.locationCode}:`, err.message);
-    }
-  }
-  console.log(`✅ Processed ${ruleSuccessCount}/${rules.length} routing rules safely.`);
 
   console.log('\n--- PRODUCTION SEED COMPLETED SUCCESSFULLY ---');
   await app.close();

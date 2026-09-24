@@ -1,48 +1,20 @@
 import { Transform } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
-import { LocationCategory, LocationPipeline, LocationRole, LocationType } from '../schemas/location.schema.js';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateLocationDto {
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value }) => value?.trim().toUpperCase())
+  @Transform(({ value }) => typeof value === 'string' ? value.trim().toUpperCase() : value)
   code: string;
 
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value }) => value?.trim())
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
   name: string;
 
-  @IsEnum(LocationCategory)
-  @IsNotEmpty()
-  category: LocationCategory;
-
-  @IsEnum(LocationType)
-  @IsNotEmpty()
-  locationType: LocationType;
-
-  @IsArray()
-  @IsEnum(LocationPipeline, { each: true })
-  @IsOptional()
-  pipelines?: LocationPipeline[];
-
-  @IsEnum(LocationRole)
-  @IsNotEmpty()
-  role: LocationRole;
-
   @IsString()
   @IsOptional()
-  @Transform(({ value }) => value?.trim().toUpperCase())
-  parentCode?: string | null;
-
-  @IsNumber()
-  @Min(0)
-  @IsOptional()
-  maxCapacity?: number | null;
-
-  @IsString()
-  @IsOptional()
-  @Transform(({ value }) => value?.trim())
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
   remark?: string | null;
 
   @IsBoolean()

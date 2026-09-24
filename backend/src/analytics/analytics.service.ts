@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 
 import { Asset, AssetDocument, AssetStatus } from '../assets/schemas/asset.schema.js';
 import { MovementLog, MovementLogDocument } from '../movements/schemas/movement-log.schema.js';
-import { PipelineOperation } from '../routing-rules/schemas/routing-rule.schema.js';
+import { PipelineOperation } from '../assets/schemas/asset.schema.js';
 
 @Injectable()
 export class AnalyticsService {

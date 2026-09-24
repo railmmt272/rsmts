@@ -5,10 +5,12 @@ import CommandCenterNav from "@/components/CommandCenter/CommandCenterNav";
 import AssetCard, { Asset } from "@/components/Assets/AssetCard";
 import AssetDetailsDrawer from "@/components/Assets/AssetDetailsDrawer";
 import RouteRerouteDrawer from "@/components/Assets/RouteRerouteDrawer";
+import LocationSelectModal from "@/components/CommandCenter/LocationSelectModal";
+import { ChevronDown } from "lucide-react";
 import api from "@/services/api";
 import { useToast } from "@/contexts/ToastContext";
 
-type RepairTab = "ALL" | "NSY" | "SHOP" | "QA" | "READY_TO_DISPATCH" | "DISPATCHED" | "OTHER";
+type RepairTab = "ALL" | "READY_TO_DISPATCH" | "DISPATCHED";
 
 export default function RepairView() {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -16,16 +18,19 @@ export default function RepairView() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<RepairTab>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [locations, setLocations] = useState<{ code: string; name: string }[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>("ALL");
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const toast = useToast();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Reset page when tab or search changes
+  // Reset page when tab, search, or location changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchTerm]);
+  }, [activeTab, searchTerm, selectedLocation]);
 
   // Auto-select tab based on search match
   useEffect(() => {
@@ -40,10 +45,6 @@ export default function RepairView() {
         let targetTab: RepairTab = "ALL";
         if (match.status === "DISPATCHED") targetTab = "DISPATCHED";
         else if (match.status === "READY_TO_DISPATCH") targetTab = "READY_TO_DISPATCH";
-        else if (match.currentLocationCode === "NSY") targetTab = "NSY";
-        else if (["WRS_1", "WRS_2", "WRS_3", "WRS_4"].includes(match.currentLocationCode)) targetTab = "SHOP";
-        else if (match.currentLocationCode === "WRS_5") targetTab = "QA";
-        else targetTab = "OTHER";
 
         if (activeTab !== targetTab) {
           setActiveTab(targetTab);
@@ -70,6 +71,7 @@ export default function RepairView() {
 
   useEffect(() => {
     fetchAssets();
+    api.get("/locations?isActive=true").then(res => setLocations(res.data)).catch(console.error);
   }, []);
 
   const filteredAssets = useMemo(() => {
@@ -86,32 +88,23 @@ export default function RepairView() {
       );
     }
 
-    // 3. Filter by sub-tab
+    // 3. Filter by location dropdown
+    if (selectedLocation !== "ALL") {
+      repairAssets = repairAssets.filter((a) => a.currentLocationCode === selectedLocation);
+    }
+
+    // 4. Filter by sub-tab
     switch (activeTab) {
       case "ALL":
         return repairAssets;
-      case "NSY":
-        return repairAssets.filter((a) => a.currentLocationCode === "NSY" && !["READY_TO_DISPATCH","DISPATCHED"].includes(a.status));
-      case "SHOP":
-        return repairAssets.filter((a) =>
-          ["WRS_1", "WRS_2", "WRS_3", "WRS_4"].includes(a.currentLocationCode) && !["READY_TO_DISPATCH","DISPATCHED"].includes(a.status)
-        );
-      case "QA":
-        return repairAssets.filter((a) => a.currentLocationCode === "WRS_5" && !["READY_TO_DISPATCH","DISPATCHED"].includes(a.status));
       case "READY_TO_DISPATCH":
         return repairAssets.filter((a) => a.status === "READY_TO_DISPATCH");
       case "DISPATCHED":
         return repairAssets.filter((a) => a.status === "DISPATCHED");
-      case "OTHER":
-        return repairAssets.filter(
-          (a) =>
-            !["NSY", "WRS_1", "WRS_2", "WRS_3", "WRS_4", "WRS_5"].includes(a.currentLocationCode) &&
-            !["READY_TO_DISPATCH","DISPATCHED"].includes(a.status)
-        );
       default:
         return repairAssets;
     }
-  }, [assets, activeTab, searchTerm]);
+  }, [assets, activeTab, searchTerm, selectedLocation]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredAssets.length / itemsPerPage);
@@ -161,10 +154,6 @@ export default function RepairView() {
 
   const tabs: { id: RepairTab; label: string }[] = [
     { id: "ALL", label: "All Repair" },
-    { id: "NSY", label: "NSY" },
-    { id: "SHOP", label: "Shop (WRS 1-4)" },
-    { id: "QA", label: "QA (WRS 5)" },
-    { id: "OTHER", label: "Other" },
     { id: "READY_TO_DISPATCH", label: "🟡 Ready to Dispatch" },
     { id: "DISPATCHED", label: "✅ Dispatched" },
   ];
@@ -173,10 +162,12 @@ export default function RepairView() {
     <div className="bg-white flex-1 flex flex-col">
       <CommandCenterNav searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 
-      {/* Sub tabs */}
-      <div className="mb-2 text-sm text-gray-500 font-medium tracking-wide">Stages</div>
-      <div className="flex flex-wrap gap-2 mb-6">
-        {tabs.map((t) => (
+      {/* Sub tabs and Filters */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+        <div>
+          <div className="mb-2 text-sm text-gray-500 font-medium tracking-wide">Stages</div>
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
@@ -193,6 +184,30 @@ export default function RepairView() {
             {t.label}
           </button>
         ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 text-sm text-gray-500 font-medium tracking-wide">Filter by Location</div>
+          <button
+            type="button"
+            onClick={() => setIsLocationModalOpen(true)}
+            className="flex items-center justify-between w-full min-w-56 pl-3 pr-3 py-1.5 text-base border-2 border-gray-600 focus:outline-none focus:ring-gray-900 focus:border-gray-900 sm:text-sm rounded-md bg-white text-left"
+          >
+            <span className={selectedLocation !== "ALL" ? "text-gray-900 font-medium truncate" : "text-gray-500"}>
+              {selectedLocation === "ALL" ? "All Locations" : `${locations.find(l => l.code === selectedLocation)?.name || selectedLocation} (${selectedLocation})`}
+            </span>
+            <ChevronDown className="w-4 h-4 text-gray-500 ml-2 shrink-0" />
+          </button>
+          <LocationSelectModal
+            isOpen={isLocationModalOpen}
+            onClose={() => setIsLocationModalOpen(false)}
+            locations={locations}
+            onSelect={setSelectedLocation}
+            title="Filter by Location"
+            allowAll={true}
+          />
+        </div>
       </div>
 
       {loading && (

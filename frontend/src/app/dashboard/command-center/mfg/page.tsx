@@ -5,10 +5,12 @@ import CommandCenterNav from '@/components/CommandCenter/CommandCenterNav';
 import AssetCard, { Asset } from '@/components/Assets/AssetCard';
 import AssetDetailsDrawer from '@/components/Assets/AssetDetailsDrawer';
 import RouteRerouteDrawer from '@/components/Assets/RouteRerouteDrawer';
+import LocationSelectModal from "@/components/CommandCenter/LocationSelectModal";
+import { ChevronDown } from "lucide-react";
 import api from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
 
-type MfgTab = 'ALL' | 'GIF' | 'CRANE' | 'READY_TO_DISPATCH' | 'DISPATCHED' | 'OTHER';
+type MfgTab = 'ALL' | 'READY_TO_DISPATCH' | 'DISPATCHED';
 
 export default function MfgView() {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -16,18 +18,20 @@ export default function MfgView() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<MfgTab>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [locations, setLocations] = useState<{ code: string; name: string }[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>("ALL");
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const toast = useToast();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Reset page when tab or search changes
+  // Reset page when tab, search, or location changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchTerm]);
+  }, [activeTab, searchTerm, selectedLocation]);
 
-  // Auto-select tab based on search match
   useEffect(() => {
     if (searchTerm.trim().length > 0) {
       const lowerSearch = searchTerm.toLowerCase();
@@ -40,9 +44,6 @@ export default function MfgView() {
         let targetTab: MfgTab = "ALL";
         if (match.status === "DISPATCHED") targetTab = "DISPATCHED";
         else if (match.status === "READY_TO_DISPATCH") targetTab = "READY_TO_DISPATCH";
-        else if (match.currentLocationCode === "GIF_SHOP") targetTab = "GIF";
-        else if (match.currentLocationCode === "CRANE_MANUFACTURING_SHOP") targetTab = "CRANE";
-        else targetTab = "OTHER";
 
         if (activeTab !== targetTab) {
           setActiveTab(targetTab);
@@ -69,6 +70,7 @@ export default function MfgView() {
 
   useEffect(() => {
     fetchAssets();
+    api.get("/locations?isActive=true").then(res => setLocations(res.data)).catch(console.error);
   }, []);
 
   const filteredAssets = useMemo(() => {
@@ -85,27 +87,23 @@ export default function MfgView() {
       );
     }
 
-    // 3. Filter by sub-tab
+    // 3. Filter by location dropdown
+    if (selectedLocation !== "ALL") {
+      mfgAssets = mfgAssets.filter((a) => a.currentLocationCode === selectedLocation);
+    }
+
+    // 4. Filter by sub-tab
     switch (activeTab) {
       case 'ALL':
         return mfgAssets;
-      case 'GIF':
-        return mfgAssets.filter((a) => a.currentLocationCode === 'GIF_SHOP' && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
-      case 'CRANE':
-        return mfgAssets.filter((a) => a.currentLocationCode === 'CRANE_MANUFACTURING_SHOP' && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
       case 'READY_TO_DISPATCH':
         return mfgAssets.filter((a) => a.status === 'READY_TO_DISPATCH');
       case 'DISPATCHED':
         return mfgAssets.filter((a) => a.status === 'DISPATCHED');
-      case 'OTHER':
-        return mfgAssets.filter(
-          (a) => !['GIF_SHOP', 'CRANE_MANUFACTURING_SHOP'].includes(a.currentLocationCode) &&
-                 !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status)
-        );
       default:
         return mfgAssets;
     }
-  }, [assets, activeTab, searchTerm]);
+  }, [assets, activeTab, searchTerm, selectedLocation]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredAssets.length / itemsPerPage);
@@ -155,9 +153,6 @@ export default function MfgView() {
 
   const tabs: { id: MfgTab; label: string }[] = [
     { id: 'ALL', label: 'All MFG' },
-    { id: 'GIF', label: 'GIF Shop' },
-    { id: 'CRANE', label: 'Crane Manufacturing' },
-    { id: 'OTHER', label: 'Other' },
     { id: 'READY_TO_DISPATCH', label: '🟡 Ready to Dispatch' },
     { id: 'DISPATCHED', label: '✅ Dispatched' },
   ];
@@ -166,11 +161,12 @@ export default function MfgView() {
     <div className="bg-white flex-1 flex flex-col">
       <CommandCenterNav searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 
-      {/* Sub tabs */}
-      <div>
-        <div className="mb-2 text-sm text-gray-500 font-medium tracking-wide">Stages</div>
-        <div className="flex flex-wrap gap-2 mb-6">
-          {tabs.map((t) => (
+      {/* Sub tabs and Filters */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+        <div>
+          <div className="mb-2 text-sm text-gray-500 font-medium tracking-wide">Stages</div>
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
@@ -187,6 +183,29 @@ export default function MfgView() {
               {t.label}
             </button>
           ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 text-sm text-gray-500 font-medium tracking-wide">Filter by Location</div>
+          <button
+            type="button"
+            onClick={() => setIsLocationModalOpen(true)}
+            className="flex items-center justify-between w-full min-w-56 pl-3 pr-3 py-1.5 text-base border-2 border-gray-600 focus:outline-none focus:ring-gray-900 focus:border-gray-900 sm:text-sm rounded-md bg-white text-left"
+          >
+            <span className={selectedLocation !== "ALL" ? "text-gray-900 font-medium truncate" : "text-gray-500"}>
+              {selectedLocation === "ALL" ? "All Locations" : `${locations.find(l => l.code === selectedLocation)?.name || selectedLocation} (${selectedLocation})`}
+            </span>
+            <ChevronDown className="w-4 h-4 text-gray-500 ml-2 shrink-0" />
+          </button>
+          <LocationSelectModal
+            isOpen={isLocationModalOpen}
+            onClose={() => setIsLocationModalOpen(false)}
+            locations={locations}
+            onSelect={setSelectedLocation}
+            title="Filter by Location"
+            allowAll={true}
+          />
         </div>
       </div>
 
