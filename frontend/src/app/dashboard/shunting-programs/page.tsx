@@ -20,6 +20,8 @@ export default function ShuntingProgramsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const toast = useToast();
 
+  const [expandedRemarks, setExpandedRemarks] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     fetchPrograms();
   }, []);
@@ -47,8 +49,17 @@ export default function ShuntingProgramsPage() {
     }
   };
 
+  const toggleRemark = (id: string) => {
+    setExpandedRemarks((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 w-full">
       {/* Header section */}
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -106,41 +117,57 @@ export default function ShuntingProgramsPage() {
                   </td>
                 </tr>
               ) : (
-                programs.map((program, index) => (
-                  <tr key={program._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-4 px-6 text-sm text-gray-500">
-                      {index + 1}
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="font-medium text-gray-900">{program.shop}</span>
-                    </td>
-                    <td className="py-4 px-6 text-gray-700 whitespace-pre-wrap">
-                      {program.remark}
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <button
-                        onClick={() => toggleStatus(program._id, program.status)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border ${
-                          program.status === 'DONE'
-                            ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                            : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100'
-                        }`}
-                      >
-                        {program.status === 'DONE' ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Done
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-3.5 h-3.5" />
-                            Pending
-                          </>
+                programs.map((program, index) => {
+                  const isExpanded = expandedRemarks.has(program._id);
+                  const isLong = program.remark && program.remark.length > 100;
+                  const displayText = isExpanded || !isLong 
+                    ? program.remark 
+                    : program.remark.slice(0, 100) + '...';
+
+                  return (
+                    <tr key={program._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-6 text-sm text-gray-500">
+                        {index + 1}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-medium text-gray-900">{program.shop}</span>
+                      </td>
+                      <td className="py-4 px-6 text-gray-700">
+                        <div className="whitespace-pre-wrap">{displayText}</div>
+                        {isLong && (
+                          <button
+                            onClick={() => toggleRemark(program._id)}
+                            className="text-blue-600 hover:text-blue-800 text-xs mt-1 font-medium focus:outline-none"
+                          >
+                            {isExpanded ? 'Show Less' : 'Show More'}
+                          </button>
                         )}
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <button
+                          onClick={() => toggleStatus(program._id, program.status)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border ${
+                            program.status === 'DONE'
+                              ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                              : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100'
+                          }`}
+                        >
+                          {program.status === 'DONE' ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Done
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="w-3.5 h-3.5" />
+                              Pending
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
