@@ -109,9 +109,9 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-white/60 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-md bg-white border-2 border-gray-600 rounded-md shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-600 bg-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/20 backdrop-blur-sm p-4">
+      <div className="relative w-full max-w-md bg-white/90 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200/50 bg-white/40">
           <h3 className="text-lg font-semibold text-gray-900">
             {userToEdit ? 'Edit User' : 'Add User'}
           </h3>
@@ -135,7 +135,7 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
               required
               value={formData.name}
               onChange={handleChange}
-              className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
+              className="block w-full border border-gray-300/80 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white/70 transition-colors sm:text-sm"
               placeholder="John Doe"
             />
           </div>
@@ -148,7 +148,7 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
               required
               value={formData.email}
               onChange={handleChange}
-              className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
+              className="block w-full border border-gray-300/80 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white/70 transition-colors sm:text-sm"
               placeholder="john@example.com"
             />
           </div>
@@ -161,7 +161,7 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
               required={!userToEdit}
               value={formData.password}
               onChange={handleChange}
-              className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
+              className="block w-full border border-gray-300/80 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white/70 transition-colors sm:text-sm"
               placeholder={userToEdit ? "Leave blank to keep unchanged" : "Minimum 6 characters"}
             />
           </div>
@@ -172,7 +172,7 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
               name="role"
               value={formData.role}
               onChange={handleChange}
-              className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
+              className="block w-full border border-gray-300/80 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white/70 transition-colors sm:text-sm"
             >
               <option value="SYSTEM_ADMIN">System Admin</option>
               <option value="MANAGEMENT">Management</option>
@@ -191,7 +191,7 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
               rows={3}
               value={formData.remark}
               onChange={handleChange}
-              className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm resize-none"
+              className="block w-full border border-gray-300/80 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white/70 transition-colors sm:text-sm resize-none"
               placeholder="Any additional notes..."
             />
           </div>
@@ -214,14 +214,14 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-md border-2 border-gray-600 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-6 py-2.5 rounded-lg border border-gray-300 bg-white/50 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-md border-2 border-gray-900 bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 rounded-lg bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-50 shadow-sm"
             >
               {loading ? 'Saving...' : userToEdit ? 'Save Changes' : 'Create User'}
             </button>
