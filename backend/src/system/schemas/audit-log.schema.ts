@@ -26,3 +26,5 @@ export class AuditLog {
 export type AuditLogDocument = AuditLog & mongoose.Document;
 export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);
 
+// Automatically delete documents after 7 days (604800 seconds)
+AuditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 604800 });

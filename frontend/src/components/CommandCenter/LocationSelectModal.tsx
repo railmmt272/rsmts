@@ -53,14 +53,14 @@ export default function LocationSelectModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-      {/* Click outside to close (optional, but good UX) */}
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+      {/* Click outside to close */}
       <div className="absolute inset-0" onClick={onClose} />
       
-      <div className="relative w-full max-w-2xl bg-white border-2 border-gray-600 rounded-md shadow-2xl flex flex-col max-h-[85vh]">
-        <div className="flex items-center justify-between px-5 py-4 border-b-2 border-gray-600 bg-gray-50">
+      <div className="relative w-full max-w-2xl bg-white/90 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200/50 bg-white/40">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors">
+          <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-white/60 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -75,21 +75,21 @@ export default function LocationSelectModal({
               placeholder="Search locations by code or name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-9 pr-3 py-2.5 border-2 border-gray-300 rounded-md text-sm focus:outline-none focus:border-gray-900 transition-colors"
+              className="block w-full pl-9 pr-3 py-2.5 border border-gray-300/80 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-colors bg-white/70"
               autoFocus
             />
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+        <div className="flex-1 overflow-y-auto p-5 bg-transparent">
           {allowAll && !searchTerm && (
-            <div className="mb-3">
+            <div className="mb-4">
                <button
                   onClick={() => {
                     onSelect("ALL");
                     onClose();
                   }}
-                  className="w-full flex flex-col items-start p-3 text-left border-2 border-gray-200 bg-white rounded-md hover:border-gray-900 hover:bg-gray-100 transition-colors focus:outline-none"
+                  className="w-full flex flex-col items-start p-3 text-left border border-gray-200/80 bg-white/60 rounded-xl hover:border-gray-400 hover:bg-white/90 transition-all focus:outline-none shadow-sm"
                 >
                   <span className="font-semibold text-gray-900 text-sm">All Locations</span>
                   <span className="text-xs text-gray-500 mt-0.5">Show assets from any location</span>
@@ -98,7 +98,7 @@ export default function LocationSelectModal({
           )}
           
           {filteredLocations.length === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-500 bg-white border border-gray-200 rounded-md">
+            <div className="py-8 text-center text-sm text-gray-500 bg-white/50 border border-gray-200/50 rounded-xl">
               No locations found matching "{searchTerm}"
             </div>
           ) : (
@@ -110,7 +110,7 @@ export default function LocationSelectModal({
                     onSelect(loc.code);
                     onClose();
                   }}
-                  className="flex flex-col items-start p-3 text-left border-2 border-gray-200 bg-white rounded-md hover:border-gray-900 hover:bg-gray-100 transition-colors focus:outline-none group"
+                  className="flex flex-col items-start p-3 text-left border border-gray-200/80 bg-white/60 rounded-xl hover:border-gray-400 hover:bg-white/90 transition-all focus:outline-none group shadow-sm"
                 >
                   <span className="font-semibold text-gray-900 text-sm group-hover:text-black">{loc.code}</span>
                   {loc.name !== loc.code && (

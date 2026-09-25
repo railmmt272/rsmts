@@ -28,4 +28,8 @@ export class SystemService {
       .limit(limit)
       .exec();
   }
+
+  async clearAuditLogs() {
+    return this.auditLogModel.deleteMany({}).exec();
+  }
 }

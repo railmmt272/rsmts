@@ -96,7 +96,7 @@ export default function RepairView() {
     // 4. Filter by sub-tab
     switch (activeTab) {
       case "ALL":
-        return repairAssets;
+        return repairAssets.filter((a) => a.status !== 'READY_TO_DISPATCH' && a.status !== 'DISPATCHED');
       case "READY_TO_DISPATCH":
         return repairAssets.filter((a) => a.status === "READY_TO_DISPATCH");
       case "DISPATCHED":

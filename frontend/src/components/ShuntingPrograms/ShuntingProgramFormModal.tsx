@@ -8,12 +8,14 @@ interface ShuntingProgramFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  programToEdit?: any;
 }
 
 export default function ShuntingProgramFormModal({
   isOpen,
   onClose,
   onSuccess,
+  programToEdit,
 }: ShuntingProgramFormModalProps) {
   const [shop, setShop] = useState('');
   const [remark, setRemark] = useState('');
@@ -25,11 +27,16 @@ export default function ShuntingProgramFormModal({
 
   useEffect(() => {
     if (isOpen) {
-      setShop('');
-      setRemark('');
+      if (programToEdit) {
+        setShop(programToEdit.shop);
+        setRemark(programToEdit.remark);
+      } else {
+        setShop('');
+        setRemark('');
+      }
       fetchLocations();
     }
-  }, [isOpen]);
+  }, [isOpen, programToEdit]);
 
   const fetchLocations = async () => {
     try {
@@ -43,18 +50,23 @@ export default function ShuntingProgramFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shop || !remark) {
-      toast.error('Please fill in both Shop and Remarks.');
+      toast.error('Please fill in both Shop and Shunting Program.');
       return;
     }
 
     setSubmitting(true);
     try {
-      await api.post('/shunting-programs', { shop, remark });
-      toast.success('Shunting program added successfully');
+      if (programToEdit) {
+        await api.patch(`/shunting-programs/${programToEdit._id}`, { shop, remark });
+        toast.success('Shunting program updated successfully');
+      } else {
+        await api.post('/shunting-programs', { shop, remark });
+        toast.success('Shunting program added successfully');
+      }
       onSuccess();
       onClose();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to add shunting program');
+      toast.error(error.response?.data?.message || 'Failed to save shunting program');
     } finally {
       setSubmitting(false);
     }
@@ -63,13 +75,13 @@ export default function ShuntingProgramFormModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black/50 backdrop-blur-sm p-4 sm:p-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black/50 p-4 sm:p-0">
       <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl ring-1 ring-gray-900/5 sm:my-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Add New Shunting Program</h3>
-            <p className="text-sm text-gray-500 mt-1">Create a movement task or remark</p>
+            <h3 className="text-lg font-semibold text-gray-900">{programToEdit ? 'Edit Shunting Program' : 'Add New Shunting Program'}</h3>
+            <p className="text-sm text-gray-500 mt-1">{programToEdit ? 'Update details of the shunting task' : 'Create a movement task or shunting program'}</p>
           </div>
           <button
             onClick={onClose}
@@ -89,7 +101,7 @@ export default function ShuntingProgramFormModal({
               <button
                 type="button"
                 onClick={() => setIsShopModalOpen(true)}
-                className="flex items-center justify-between w-full border-2 border-gray-600 rounded-md p-2.5 focus:outline-none focus:border-gray-900 bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
+                className="flex items-center justify-between w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
               >
                 <span className={shop ? "text-gray-900 font-medium" : "text-gray-500"}>
                   {shop ? `${locations.find(l => l.code === shop)?.name || shop} (${shop})` : "Select Shop Location..."}
@@ -107,12 +119,12 @@ export default function ShuntingProgramFormModal({
 
             {/* Program Details */}
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Remarks</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Shunting Program</label>
               <textarea
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 rows={4}
-                className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 sm:text-sm"
+                className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white sm:text-sm"
                 placeholder="e.g. Place wagon no. 231xxx345 in WRS 2 shop"
                 required
               />

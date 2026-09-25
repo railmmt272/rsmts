@@ -76,6 +76,23 @@ export default function SettingsPage() {
     }
   };
 
+  const clearLogs = async () => {
+    if (!window.confirm('Are you sure you want to delete all activity logs? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      setLoadingLogs(true);
+      await api.delete('/system/audit-logs');
+      setLogs([]);
+      setCurrentPage(1);
+    } catch (err: any) {
+      console.error('Failed to clear logs:', err);
+      alert('Failed to clear logs. Please try again later.');
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
   const isAuthorized = user?.role === 'SYSTEM_ADMIN' || user?.role === 'MANAGEMENT';
 
   if (!isAuthorized) {
@@ -197,7 +214,14 @@ export default function SettingsPage() {
           <div className="bg-white rounded-lg border-2 border-gray-600 flex-1 flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-lg font-medium text-gray-900">Recent Activity Logs</h2>
-              <button onClick={fetchLogs} className="text-sm text-blue-600 hover:text-blue-800">Refresh</button>
+              <div className="flex gap-2">
+                <button onClick={clearLogs} className="text-sm text-red-600 hover:text-red-800 px-3 py-1 border border-red-200 hover:bg-red-50 rounded-md transition-colors">
+                  Clear All
+                </button>
+                <button onClick={fetchLogs} className="text-sm text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-200 hover:bg-blue-50 rounded-md transition-colors">
+                  Refresh
+                </button>
+              </div>
             </div>
             
             {loadingLogs ? (

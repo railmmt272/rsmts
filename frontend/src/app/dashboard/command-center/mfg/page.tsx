@@ -95,7 +95,7 @@ export default function MfgView() {
     // 4. Filter by sub-tab
     switch (activeTab) {
       case 'ALL':
-        return mfgAssets;
+        return mfgAssets.filter((a) => a.status !== 'READY_TO_DISPATCH' && a.status !== 'DISPATCHED');
       case 'READY_TO_DISPATCH':
         return mfgAssets.filter((a) => a.status === 'READY_TO_DISPATCH');
       case 'DISPATCHED':

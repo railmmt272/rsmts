@@ -210,9 +210,9 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-white/60 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-2xl bg-white border-2 border-gray-600 rounded-md shadow-2xl overflow-hidden mt-16 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-600 bg-white sticky top-0 z-10">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 sm:p-0">
+      <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl ring-1 ring-gray-900/5 sm:my-8 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-10">
           <h3 className="text-lg font-semibold text-gray-900">
             {assetToEdit ? 'Change Asset Status' : 'Register New Asset'}
           </h3>
@@ -238,13 +238,13 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Asset Number</label>
-                    <div className="p-3 bg-gray-50 border-2 border-gray-600 rounded-md text-gray-900 font-medium">
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
                       {assetToEdit.assetNumber}
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Current Status</label>
-                    <div className="p-3 bg-gray-50 border-2 border-gray-600 rounded-md text-gray-900 font-medium">
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
                       {assetToEdit.status.replace(/_/g, ' ')}
                     </div>
                   </div>
@@ -265,10 +265,10 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                         key={value}
                         type="button"
                         onClick={() => setStatus(value)}
-                        className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                           status === value
-                            ? 'border-gray-900 bg-gray-200 text-gray-900'
-                            : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                            ? 'border-gray-900 bg-gray-900 text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                         }`}
                       >
                         {label}
@@ -283,7 +283,7 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                     required
                     value={remark}
                     onChange={(e) => setRemark(e.target.value)}
-                    className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white text-gray-900 transition-colors sm:text-sm"
+                    className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white text-gray-900 transition-colors sm:text-sm"
                     rows={3}
                     placeholder="Reason for status change..."
                   />
@@ -308,10 +308,10 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                             setOperation(op);
                             setSelectedLocation('');
                           }}
-                          className={`px-5 py-2.5 rounded-md text-sm font-medium border-2 transition-colors ${
+                          className={`px-5 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
                             operation === op
-                              ? 'border-gray-900 bg-gray-200 text-gray-900'
-                              : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                              ? 'border-gray-900 bg-gray-900 text-white'
+                              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                           }`}
                         >
                           {op}
@@ -322,7 +322,7 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                 </div>
 
                 {/* Category Selection */}
-                <div className="space-y-4 p-4 rounded-md border-2 border-gray-600 bg-white">
+                <div className="space-y-4 p-5 rounded-lg border border-gray-200 bg-gray-50/50">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Asset Type</label>
                     <div className="flex flex-wrap gap-2">
@@ -335,10 +335,10 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                             setSelectedParent('');
                             setSelectedChild('');
                           }}
-                          className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
+                          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                             selectedGrandparent === c.code
-                              ? 'border-gray-900 bg-gray-200 text-gray-900'
-                              : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                              ? 'border-gray-900 bg-gray-900 text-white'
+                              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                           }`}
                         >
                           {c.name}
@@ -359,10 +359,10 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                               setSelectedParent(c.code);
                               setSelectedChild('');
                             }}
-                            className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
+                            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                               selectedParent === c.code
-                                ? 'border-gray-900 bg-gray-200 text-gray-900'
-                                : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                                ? 'border-gray-900 bg-gray-900 text-white'
+                                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                             }`}
                           >
                             {c.name}
@@ -381,10 +381,10 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                             key={c.code}
                             type="button"
                             onClick={() => setSelectedChild(c.code)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium border-2 transition-colors ${
+                            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                               selectedChild === c.code
-                                ? 'border-gray-900 bg-gray-200 text-gray-900'
-                                : 'border-gray-600 bg-white text-gray-700 hover:bg-gray-50'
+                                ? 'border-gray-900 bg-gray-900 text-white'
+                                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                             }`}
                           >
                             {c.name}
@@ -396,13 +396,13 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                 </div>
 
                 {/* Location Selection (Flat List) */}
-                <div className="space-y-4 p-4 rounded-md border-2 border-gray-600 bg-gray-50">
+                <div className="space-y-4 p-5 rounded-lg border border-gray-200 bg-gray-50/50">
                   <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Physical Location</h4>
                   <div>
                     <button
                       type="button"
                       onClick={() => setIsLocationModalOpen(true)}
-                      className="flex items-center justify-between w-full border-2 border-gray-600 rounded-md p-2.5 focus:outline-none focus:border-gray-900 bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
+                      className="flex items-center justify-between w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
                     >
                       <span className={selectedLocation ? "text-gray-900 font-medium" : "text-gray-500"}>
                         {selectedLocation ? `${locations.find(l => l.code === selectedLocation)?.name || selectedLocation} (${selectedLocation})` : "Select Initial Location..."}
@@ -434,7 +434,7 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                       required
                       value={assetNumber}
                       onChange={handleAssetNumberChange}
-                      className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
+                      className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white transition-colors sm:text-sm"
                       placeholder={idRule?.type === 'NUMERIC' ? "e.g. 12345" : "e.g. ABCDE"}
                     />
                   </div>
@@ -444,7 +444,7 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                       required
                       value={remark}
                       onChange={(e) => setRemark(e.target.value)}
-                      className="block w-full border-2 border-gray-600 rounded-md p-3 focus:outline-none focus:border-gray-900 bg-white transition-colors sm:text-sm"
+                      className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white transition-colors sm:text-sm"
                       rows={2}
                       placeholder="Initial registration..."
                     />
@@ -453,18 +453,18 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
               </div>
             )}
 
-            <div className="pt-6 flex justify-end gap-3 sticky bottom-0 bg-white/90 backdrop-blur pb-2">
+            <div className="border-t border-gray-100 px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 sticky bottom-0 z-20">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-2.5 rounded-md border-2 border-gray-600 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 rounded-md border-2 border-gray-900 bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-lg hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Saving...' : (assetToEdit ? 'Update Status' : 'Register Asset')}
               </button>
