@@ -24,10 +24,7 @@ interface CategoryNode {
 interface LocationNode {
   code: string;
   name: string;
-  locationType: string;
-  category: string;
-  pipelines: string[];
-  children: LocationNode[];
+  isActive: boolean;
 }
 
 // Custom Modal Picker Component
@@ -82,17 +79,14 @@ export default function RegisterAsset() {
 
   // Hierarchies
   const [categoryHierarchy, setCategoryHierarchy] = useState<CategoryNode[]>([]);
-  const [locationHierarchy, setLocationHierarchy] = useState<LocationNode[]>([]);
+  const [locations, setLocations] = useState<LocationNode[]>([]);
 
   // Selected Categories
   const [catL1, setCatL1] = useState('');
   const [catL2, setCatL2] = useState('');
   const [catL3, setCatL3] = useState('');
 
-  // Selected Locations
-  const [locL1, setLocL1] = useState('');
-  const [locL2, setLocL2] = useState('');
-  const [locL3, setLocL3] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('');
 
   // Modal State
   const [pickerConfig, setPickerConfig] = useState<{
@@ -114,10 +108,10 @@ export default function RegisterAsset() {
       setLoading(true);
       const [catsRes, locsRes] = await Promise.all([
         api.get('/asset-categories/hierarchy'),
-        api.get('/locations/hierarchy')
+        api.get('/locations?isActive=true')
       ]);
       setCategoryHierarchy(catsRes.data);
-      setLocationHierarchy(locsRes.data);
+      setLocations(locsRes.data);
     } catch (err: any) {
       console.error(err);
       setError('Failed to load hierarchies. Please try again.');
@@ -130,18 +124,18 @@ export default function RegisterAsset() {
     setAssetNumber('');
     setRemark('');
     setCatL1(''); setCatL2(''); setCatL3('');
-    setLocL1(''); setLocL2(''); setLocL3('');
+    setSelectedLocation('');
   };
 
   const handleOperationChange = (op: 'REPAIRING' | 'MANUFACTURING') => {
     setOperation(op);
-    setLocL1(''); setLocL2(''); setLocL3(''); // Reset locations
+    setSelectedLocation(''); // Reset location
     setCatL1(''); setCatL2(''); setCatL3(''); // Reset categories
   };
 
   const handleSubmit = async () => {
     const finalCat = catL3 || catL2 || catL1;
-    const finalLoc = locL3 || locL2 || locL1;
+    const finalLoc = selectedLocation;
 
     if (!assetNumber || !finalCat || !finalLoc) {
       Toast.show({
@@ -241,18 +235,7 @@ export default function RegisterAsset() {
   };
 
   // Derived Location Lists
-  const pipelineFilteredLocations = locationHierarchy.filter(l => 
-    l.pipelines?.includes(operation) || l.category === 'COMMON' || l.category === operation
-  );
-  
-  const locL1Options = pipelineFilteredLocations.map(l => ({ label: `${l.name} (${l.code})`, value: l.code }));
-  const selectedLocL1Node = pipelineFilteredLocations.find(l => l.code === locL1);
-  
-  const locL2Options = selectedLocL1Node?.children?.map(l => ({ label: `${l.name} (${l.code})`, value: l.code })) || [];
-  const selectedLocL2Node = selectedLocL1Node?.children?.find(l => l.code === locL2);
-  
-  const locL3Options = selectedLocL2Node?.children?.map(l => ({ label: `${l.name} (${l.code})`, value: l.code })) || [];
-
+  const locationOptions = locations.map((l: LocationNode) => ({ label: `${l.name} (${l.code})`, value: l.code }));
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -335,24 +318,12 @@ export default function RegisterAsset() {
             {/* Location Selection */}
             <View style={styles.section}>
               <Text style={styles.label}>Initial Location <Text style={styles.required}>*</Text></Text>
-              <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Location Group', locL1Options, locL1, (val) => { setLocL1(val); setLocL2(''); setLocL3(''); })}>
-                <Text style={locL1 ? styles.inputText : styles.placeholderText}>{locL1 ? locL1Options.find(o => o.value === locL1)?.label : 'Select Location Group'}</Text>
+              <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Location', locationOptions, selectedLocation, setSelectedLocation)}>
+                <Text style={selectedLocation ? styles.inputText : styles.placeholderText}>
+                  {selectedLocation ? locationOptions.find((o: any) => o.value === selectedLocation)?.label : 'Select Initial Location'}
+                </Text>
                 <ChevronDown size={20} color="#9ca3af" />
               </TouchableOpacity>
-              
-              {locL1 && locL2Options.length > 0 && (
-                <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Sub Location', locL2Options, locL2, (val) => { setLocL2(val); setLocL3(''); })}>
-                  <Text style={locL2 ? styles.inputText : styles.placeholderText}>{locL2 ? locL2Options.find(o => o.value === locL2)?.label : 'Select Sub Location'}</Text>
-                  <ChevronDown size={20} color="#9ca3af" />
-                </TouchableOpacity>
-              )}
-
-              {locL2 && locL3Options.length > 0 && (
-                <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Track/Point', locL3Options, locL3, setLocL3)}>
-                  <Text style={locL3 ? styles.inputText : styles.placeholderText}>{locL3 ? locL3Options.find(o => o.value === locL3)?.label : 'Select Track/Point'}</Text>
-                  <ChevronDown size={20} color="#9ca3af" />
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Remark */}

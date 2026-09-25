@@ -226,7 +226,9 @@ const CommandCenter = () => {
 
     if (activePipeline === 'REPAIRING') {
       switch (activeStage) {
-        case 'ALL': break;
+        case 'ALL':
+          result = result.filter(a => !['READY_TO_DISPATCH', 'DISPATCHED'].includes(a.status));
+          break;
         case 'NSY':
           result = result.filter(a => a.currentLocationCode === 'NSY' && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
           break;
@@ -248,7 +250,9 @@ const CommandCenter = () => {
       }
     } else {
       switch (activeStage) {
-        case 'ALL': break;
+        case 'ALL':
+          result = result.filter(a => !['READY_TO_DISPATCH', 'DISPATCHED'].includes(a.status));
+          break;
         case 'GIF':
           result = result.filter(a => a.currentLocationCode === 'GIF_SHOP' && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
           break;

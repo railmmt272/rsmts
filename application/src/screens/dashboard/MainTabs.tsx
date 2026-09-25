@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LayoutDashboard, User, TrainFront } from 'lucide-react-native';
+import { LayoutDashboard, User, TrainFront, ClipboardList } from 'lucide-react-native';
 import CommandCenter from './CommandCenter';
 import RegisterAsset from './RegisterAsset';
+import ShuntingPrograms from './ShuntingPrograms';
 import Profile from './Profile';
 
-type TabType = 'CommandCenter' | 'RegisterAsset' | 'Profile';
+type TabType = 'CommandCenter' | 'RegisterAsset' | 'ShuntingPrograms' | 'Profile';
 
 const MainTabs = () => {
   const [activeTab, setActiveTab] = useState<TabType>('CommandCenter');
@@ -17,6 +18,8 @@ const MainTabs = () => {
         return <CommandCenter />;
       case 'RegisterAsset':
         return <RegisterAsset />;
+      case 'ShuntingPrograms':
+        return <ShuntingPrograms />;
       case 'Profile':
         return <Profile />;
       default:
@@ -52,6 +55,17 @@ const MainTabs = () => {
               color={activeTab === 'RegisterAsset' ? '#0284c7' : '#9ca3af'}
             />
             {activeTab === 'RegisterAsset' && <View style={styles.activeIndicator} />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('ShuntingPrograms')}
+          >
+            <ClipboardList
+              size={24}
+              color={activeTab === 'ShuntingPrograms' ? '#0284c7' : '#9ca3af'}
+            />
+            {activeTab === 'ShuntingPrograms' && <View style={styles.activeIndicator} />}
           </TouchableOpacity>
 
           <TouchableOpacity
