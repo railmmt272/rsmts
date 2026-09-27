@@ -211,7 +211,7 @@ const LoginScreen = () => {
 };
 
 const colors = {
-  background: '#fcfcfc',
+  background: '#ffffff',
   primaryText: '#0a1930', // Dark blue
   secondaryText: '#64748b',
   lightGray: '#e2e8f0',

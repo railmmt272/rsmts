@@ -3,17 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { 
-  Globe, 
-  TrainFront, 
-  BarChart3, 
-  ShieldCheck, 
-  Clock, 
-  User, 
-  Lock, 
-  EyeOff, 
-  Eye, 
-  Shield, 
+import {
+  Globe,
+  TrainFront,
+  BarChart3,
+  ShieldCheck,
+  Clock,
+  User,
+  Lock,
+  EyeOff,
+  Eye,
+  Shield,
   Headset,
   Download
 } from 'lucide-react';
@@ -47,7 +47,7 @@ export default function LoginPage() {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      
+
       // Save access token to a client cookie so Next.js middleware can read it for route protection
       if (response.data && response.data.accessToken) {
         document.cookie = `accessToken=${response.data.accessToken}; path=/; max-age=3600; SameSite=Lax`;
@@ -76,7 +76,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      
+
       {/* Left Panel: Branding & Information */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-slate-900 overflow-hidden flex-col justify-between items-center text-white p-12">
         {/* Background Image */}
@@ -142,7 +142,7 @@ export default function LoginPage() {
               <div>
                 <h4 className="font-semibold text-sm text-white">Secure Role-Based Access</h4>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Access is granted based on your assigned role. 
+                  Access is granted based on your assigned role.
                   All activities are monitored and recorded.
                 </p>
               </div>
@@ -158,12 +158,12 @@ export default function LoginPage() {
 
       {/* Right Panel: Login Form */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 sm:p-12 relative bg-white">
-        
+
         {/* Top Right Actions */}
         <div className="absolute top-8 right-8 flex items-center gap-3">
           {/* Download App */}
-          <a 
-            href="https://rsmts.netlify.app/rsmts_jamalpur.apk"
+          <a
+            href="https://rsmts.netlify.app/RSMTS_Jamalpur.apk"
             target="_blank"
             rel="noopener noreferrer"
             download
@@ -293,7 +293,7 @@ export default function LoginPage() {
               Contact System Administrator or IT Support
             </p>
           </div>
-          
+
         </div>
       </div>
     </div>

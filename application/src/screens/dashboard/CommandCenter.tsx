@@ -23,6 +23,7 @@ export interface Asset {
 export interface LocationNode {
   code: string;
   name: string;
+  isActive?: boolean;
   category: 'COMMON' | 'REPAIRING' | 'MANUFACTURING';
   locationType: string;
   maxCapacity: number;
@@ -42,10 +43,10 @@ export interface MovementLog {
 }
 
 // Custom Modal Picker Component
-const CustomPickerModal = ({ 
-  visible, onClose, title, items, onSelect, selectedValue 
-}: { 
-  visible: boolean, onClose: () => void, title: string, items: {label: string, value: string}[], onSelect: (val: string) => void, selectedValue: string 
+const CustomPickerModal = ({
+  visible, onClose, title, items, onSelect, selectedValue
+}: {
+  visible: boolean, onClose: () => void, title: string, items: { label: string, value: string }[], onSelect: (val: string) => void, selectedValue: string
 }) => {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -61,7 +62,7 @@ const CustomPickerModal = ({
             data={items}
             keyExtractor={item => item.value}
             renderItem={({ item }) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.pickerItem, selectedValue === item.value && styles.pickerItemSelected]}
                 onPress={() => {
                   onSelect(item.value);
@@ -83,26 +84,19 @@ const CustomPickerModal = ({
 
 const repairTabs = [
   { id: 'ALL', label: 'All Repair' },
-  { id: 'NSY', label: 'NSY' },
-  { id: 'SHOP', label: 'Shop (WRS 1-4)' },
-  { id: 'QA', label: 'QA (WRS 5)' },
-  { id: 'OTHER', label: 'Other' },
   { id: 'READY_TO_DISPATCH', label: '🟡 Ready to Dispatch' },
   { id: 'DISPATCHED', label: '✅ Dispatched' },
 ];
 
 const mfgTabs = [
   { id: 'ALL', label: 'All MFG' },
-  { id: 'GIF', label: 'GIF Shop' },
-  { id: 'CRANE', label: 'Crane Manufacturing' },
-  { id: 'OTHER', label: 'Other' },
   { id: 'READY_TO_DISPATCH', label: '🟡 Ready to Dispatch' },
   { id: 'DISPATCHED', label: '✅ Dispatched' },
 ];
 
 const CommandCenter = () => {
   const { user } = useAuth();
-  
+
   // Permissions
   const isViewer = user?.role === 'VIEWER';
   const showRepair = user?.role !== 'MANUFACTURING_SUPERVISOR';
@@ -111,9 +105,11 @@ const CommandCenter = () => {
   // State
   const [assets, setAssets] = useState<Asset[]>([]);
   const [locations, setLocations] = useState<LocationNode[]>([]);
+  const [flatLocations, setFlatLocations] = useState<{ code: string, name: string }[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [activePipeline, setActivePipeline] = useState<'REPAIRING' | 'MANUFACTURING' | 'LOCATIONS'>(
     showRepair ? 'REPAIRING' : showMfg ? 'MANUFACTURING' : 'LOCATIONS'
   );
@@ -124,7 +120,7 @@ const CommandCenter = () => {
   const [routeModalVisible, setRouteModalVisible] = useState(false);
   const [selectedAssetForRoute, setSelectedAssetForRoute] = useState<Asset | null>(null);
   const [allowedDestinations, setAllowedDestinations] = useState<string[]>([]);
-  
+
   const [routeLocL1, setRouteLocL1] = useState('');
   const [routeLocL2, setRouteLocL2] = useState('');
   const [routeLocL3, setRouteLocL3] = useState('');
@@ -140,7 +136,7 @@ const CommandCenter = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
-  const lastTapRef = React.useRef<{[key: string]: number}>({});
+  const lastTapRef = React.useRef<{ [key: string]: number }>({});
 
   const handleCardPress = (asset: Asset) => {
     const now = Date.now();
@@ -171,11 +167,11 @@ const CommandCenter = () => {
   const [pickerConfig, setPickerConfig] = useState<{
     visible: boolean;
     title: string;
-    items: {label: string, value: string}[];
+    items: { label: string, value: string }[];
     selectedValue: string;
     onSelect: (val: string) => void;
   }>({
-    visible: false, title: '', items: [], selectedValue: '', onSelect: () => {}
+    visible: false, title: '', items: [], selectedValue: '', onSelect: () => { }
   });
 
   useEffect(() => {
@@ -187,10 +183,11 @@ const CommandCenter = () => {
       setLoading(true);
       const [assetsRes, locRes] = await Promise.all([
         api.get('/assets'),
-        api.get('/locations/hierarchy')
+        api.get('/locations?isActive=true')
       ]);
       setAssets(assetsRes.data);
       setLocations(locRes.data);
+      setFlatLocations(locRes.data);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch data');
     } finally {
@@ -209,6 +206,7 @@ const CommandCenter = () => {
   // Reset stage when switching pipelines or searching
   useEffect(() => {
     setActiveStage('ALL');
+    setSelectedLocation('ALL');
   }, [activePipeline, searchTerm]);
 
   // Filtering Logic
@@ -224,60 +222,29 @@ const CommandCenter = () => {
       );
     }
 
-    if (activePipeline === 'REPAIRING') {
-      switch (activeStage) {
-        case 'ALL':
-          result = result.filter(a => !['READY_TO_DISPATCH', 'DISPATCHED'].includes(a.status));
-          break;
-        case 'NSY':
-          result = result.filter(a => a.currentLocationCode === 'NSY' && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
-          break;
-        case 'SHOP':
-          result = result.filter(a => ['WRS_1', 'WRS_2', 'WRS_3', 'WRS_4'].includes(a.currentLocationCode) && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
-          break;
-        case 'QA':
-          result = result.filter(a => a.currentLocationCode === 'WRS_5' && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
-          break;
-        case 'READY_TO_DISPATCH':
-          result = result.filter(a => a.status === 'READY_TO_DISPATCH');
-          break;
-        case 'DISPATCHED':
-          result = result.filter(a => a.status === 'DISPATCHED');
-          break;
-        case 'OTHER':
-          result = result.filter(a => !['NSY', 'WRS_1', 'WRS_2', 'WRS_3', 'WRS_4', 'WRS_5'].includes(a.currentLocationCode) && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
-          break;
-      }
-    } else {
-      switch (activeStage) {
-        case 'ALL':
-          result = result.filter(a => !['READY_TO_DISPATCH', 'DISPATCHED'].includes(a.status));
-          break;
-        case 'GIF':
-          result = result.filter(a => a.currentLocationCode === 'GIF_SHOP' && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
-          break;
-        case 'CRANE':
-          result = result.filter(a => a.currentLocationCode === 'CRANE_MANUFACTURING_SHOP' && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
-          break;
-        case 'READY_TO_DISPATCH':
-          result = result.filter(a => a.status === 'READY_TO_DISPATCH');
-          break;
-        case 'DISPATCHED':
-          result = result.filter(a => a.status === 'DISPATCHED');
-          break;
-        case 'OTHER':
-          result = result.filter(a => !['GIF_SHOP', 'CRANE_MANUFACTURING_SHOP'].includes(a.currentLocationCode) && !['READY_TO_DISPATCH','DISPATCHED'].includes(a.status));
-          break;
-      }
+    if (selectedLocation !== 'ALL') {
+      result = result.filter((a) => a.currentLocationCode === selectedLocation);
+    }
+
+    switch (activeStage) {
+      case 'ALL':
+        result = result.filter(a => !['READY_TO_DISPATCH', 'DISPATCHED'].includes(a.status));
+        break;
+      case 'READY_TO_DISPATCH':
+        result = result.filter(a => a.status === 'READY_TO_DISPATCH');
+        break;
+      case 'DISPATCHED':
+        result = result.filter(a => a.status === 'DISPATCHED');
+        break;
     }
 
     return result;
-  }, [assets, activePipeline, activeStage, searchTerm]);
+  }, [assets, activePipeline, activeStage, searchTerm, selectedLocation]);
 
   const openPicker = (
-    title: string, 
-    items: {label: string, value: string}[], 
-    selectedValue: string, 
+    title: string,
+    items: { label: string, value: string }[],
+    selectedValue: string,
     onSelect: (val: string) => void
   ) => {
     setPickerConfig({ visible: true, title, items, selectedValue, onSelect });
@@ -302,10 +269,10 @@ const CommandCenter = () => {
 
   const locL1Options = allowedHierarchy.map(l => ({ label: `${l.name} (${l.code})`, value: l.code }));
   const selectedLocL1Node = allowedHierarchy.find(l => l.code === routeLocL1);
-  
+
   const locL2Options = selectedLocL1Node?.children?.map(l => ({ label: `${l.name} (${l.code})`, value: l.code })) || [];
   const selectedLocL2Node = selectedLocL1Node?.children?.find(l => l.code === routeLocL2);
-  
+
   const locL3Options = selectedLocL2Node?.children?.map(l => ({ label: `${l.name} (${l.code})`, value: l.code })) || [];
 
   const checkPermission = () => {
@@ -322,14 +289,14 @@ const CommandCenter = () => {
 
   const handleDelete = (asset: Asset) => {
     if (!checkPermission()) return;
-    
+
     Alert.alert(
       'Delete Asset',
       `Are you sure you want to delete asset ${asset.assetNumber}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -355,10 +322,10 @@ const CommandCenter = () => {
 
   const handleDispatch = async (asset: Asset) => {
     if (!checkPermission()) return;
-    
+
     const nextStatus = asset.status === 'READY_TO_DISPATCH' ? 'DISPATCHED' : 'READY_TO_DISPATCH';
     const label = nextStatus === 'DISPATCHED' ? 'dispatched' : 'marked as Ready to Dispatch';
-    
+
     try {
       await api.patch(`/assets/${asset.assetNumber}/status`, { status: nextStatus });
       Toast.show({
@@ -378,23 +345,19 @@ const CommandCenter = () => {
 
   const openRouteModal = async (asset: Asset) => {
     if (!checkPermission()) return;
-    
+
     setSelectedAssetForRoute(asset);
     setRouteLocL1('');
     setRouteLocL2('');
     setRouteLocL3('');
     setRouteRemark('');
     setRouteModalVisible(true);
-    
+
     try {
       setLoadingDestinations(true);
-      const res = await api.get('/routing-rules/allowed', {
-        params: {
-          category: asset.categoryCode,
-          pipeline: asset.currentPipeline
-        }
-      });
-      setAllowedDestinations(res.data);
+      const res = await api.get('/locations?isActive=true');
+      const activeLocations = res.data.map((loc: any) => loc.code);
+      setAllowedDestinations(activeLocations);
     } catch (err: any) {
       Toast.show({
         type: 'error',
@@ -408,7 +371,7 @@ const CommandCenter = () => {
   };
 
   const handleRouteSubmit = async () => {
-    const finalLoc = routeLocL3 || routeLocL2 || routeLocL1;
+    const finalLoc = routeLocL1;
     if (!selectedAssetForRoute || !finalLoc || !routeRemark.trim()) {
       Toast.show({
         type: 'error',
@@ -440,7 +403,7 @@ const CommandCenter = () => {
         text1: 'Success',
         text2: `Asset successfully moved to ${finalLoc}`,
       });
-      
+
       setRouteModalVisible(false);
       fetchAssets();
     } catch (err: any) {
@@ -488,7 +451,7 @@ const CommandCenter = () => {
         {/* Pipelines Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollTabsRow}>
           {showRepair && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.tabButton, activePipeline === 'REPAIRING' && styles.tabButtonActive]}
               onPress={() => setActivePipeline('REPAIRING')}
             >
@@ -496,14 +459,14 @@ const CommandCenter = () => {
             </TouchableOpacity>
           )}
           {showMfg && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.tabButton, activePipeline === 'MANUFACTURING' && styles.tabButtonActive]}
               onPress={() => setActivePipeline('MANUFACTURING')}
             >
               <Text style={[styles.tabText, activePipeline === 'MANUFACTURING' && styles.tabTextActive]}>MFG</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tabButton, activePipeline === 'LOCATIONS' && styles.tabButtonActive]}
             onPress={() => setActivePipeline('LOCATIONS')}
           >
@@ -513,7 +476,24 @@ const CommandCenter = () => {
 
         {activePipeline !== 'LOCATIONS' ? (
           <>
-            <Text style={styles.sectionSubtitle}>Stages</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 20, marginBottom: 8 }}>
+              <Text style={[styles.sectionSubtitle, { marginBottom: 0 }]}>Stages</Text>
+              
+              <TouchableOpacity
+                style={[styles.dropdownInput, { padding: 8, paddingVertical: 6, minHeight: 36, width: 140, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                onPress={() => openPicker(
+                  'Filter by Location',
+                  [{ label: 'All Locations', value: 'ALL' }, ...flatLocations.map(l => ({ label: `${l.name} (${l.code})`, value: l.code }))],
+                  selectedLocation,
+                  setSelectedLocation
+                )}
+              >
+                <Text style={[selectedLocation !== 'ALL' ? styles.inputText : styles.placeholderText, { fontSize: 13, flex: 1, marginRight: 8 }]} numberOfLines={1}>
+                  {selectedLocation === 'ALL' ? 'All Locations' : `${flatLocations.find(l => l.code === selectedLocation)?.name || selectedLocation}`}
+                </Text>
+                <ChevronDown size={16} color="#9ca3af" />
+              </TouchableOpacity>
+            </View>
 
             {/* Stages Sub-Tabs */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollTabsRow}>
@@ -521,7 +501,7 @@ const CommandCenter = () => {
                 const isSelected = activeStage === tab.id;
                 let customStyle = {};
                 let customTextStyle = {};
-                
+
                 if (isSelected) {
                   if (tab.id === 'DISPATCHED') {
                     customStyle = { backgroundColor: '#d1fae5', borderColor: '#10b981' };
@@ -578,26 +558,26 @@ const CommandCenter = () => {
                     <Text style={styles.label} numberOfLines={2}>Remarks: <Text style={styles.value}>{asset.remark || 'N/A'}</Text></Text>
                   </View>
                   <View style={styles.cardActions}>
-                {asset.status !== 'DISPATCHED' && (
-                  <TouchableOpacity style={[styles.actionBtn, asset.status === 'READY_TO_DISPATCH' ? styles.btnGreen : styles.btnOrangeLight]} onPress={() => handleDispatch(asset)}>
-                    <Text style={asset.status === 'READY_TO_DISPATCH' ? styles.btnTextGreen : styles.btnTextOrangeLight}>
-                      {asset.status === 'READY_TO_DISPATCH' ? '✓ Mark Dispatched' : 'Mark Ready to Dispatch'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity style={[styles.actionBtn, styles.btnGray]} onPress={() => openRouteModal(asset)}>
-                  <Text style={styles.btnTextGray}>Route / Reroute</Text>
+                    {asset.status !== 'DISPATCHED' && (
+                      <TouchableOpacity style={[styles.actionBtn, asset.status === 'READY_TO_DISPATCH' ? styles.btnGreen : styles.btnOrangeLight]} onPress={() => handleDispatch(asset)}>
+                        <Text style={asset.status === 'READY_TO_DISPATCH' ? styles.btnTextGreen : styles.btnTextOrangeLight}>
+                          {asset.status === 'READY_TO_DISPATCH' ? '✓ Mark Dispatched' : 'Mark Ready to Dispatch'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={[styles.actionBtn, styles.btnGray]} onPress={() => openRouteModal(asset)}>
+                      <Text style={styles.btnTextGray}>Route / Reroute</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionBtn, styles.btnRed]} onPress={() => handleDelete(asset)}>
+                      <Text style={styles.btnTextRed}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.btnRed]} onPress={() => handleDelete(asset)}>
-                  <Text style={styles.btnTextRed}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))
+              ))
             )}
           </>
         ) : (
-          <LocationsTopologyView locations={locations} occupancyMap={occupancyMap} loading={loading} error={error} />
+          <LocationsTopologyView locations={locations} assets={assets} loading={loading} error={error} />
         )}
 
       </ScrollView>
@@ -609,8 +589,8 @@ const CommandCenter = () => {
         animationType="slide"
         onRequestClose={() => setRouteModalVisible(false)}
       >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
           <View style={styles.modalContainer}>
@@ -620,10 +600,10 @@ const CommandCenter = () => {
                 <X size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.modalBody}>
-              <Text style={styles.modalSubtitle}>Select Destination for Asset <Text style={{fontWeight: '700', color: '#0f172a'}}>{selectedAssetForRoute?.assetNumber}</Text></Text>
-              
+              <Text style={styles.modalSubtitle}>Select Destination for Asset <Text style={{ fontWeight: '700', color: '#0f172a' }}>{selectedAssetForRoute?.assetNumber}</Text></Text>
+
               {loadingDestinations ? (
                 <ActivityIndicator size="small" color="#0284c7" style={{ marginVertical: 20 }} />
               ) : allowedDestinations.length === 0 ? (
@@ -631,24 +611,10 @@ const CommandCenter = () => {
               ) : (
                 <View style={{ marginBottom: 20 }}>
                   <Text style={styles.modalLabel}>Select Destination <Text style={styles.required}>*</Text></Text>
-                  <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Location Group', locL1Options, routeLocL1, (val) => { setRouteLocL1(val); setRouteLocL2(''); setRouteLocL3(''); })}>
-                    <Text style={routeLocL1 ? styles.inputText : styles.placeholderText}>{routeLocL1 ? locL1Options.find(o => o.value === routeLocL1)?.label : 'Select Location Group'}</Text>
+                  <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Destination', allowedDestinations.map(d => ({ label: d, value: d })), routeLocL1, setRouteLocL1)}>
+                    <Text style={routeLocL1 ? styles.inputText : styles.placeholderText}>{routeLocL1 || 'Select Destination'}</Text>
                     <ChevronDown size={20} color="#9ca3af" />
                   </TouchableOpacity>
-                  
-                  {routeLocL1 && locL2Options.length > 0 && (
-                    <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Sub Location', locL2Options, routeLocL2, (val) => { setRouteLocL2(val); setRouteLocL3(''); })}>
-                      <Text style={routeLocL2 ? styles.inputText : styles.placeholderText}>{routeLocL2 ? locL2Options.find(o => o.value === routeLocL2)?.label : 'Select Sub Location'}</Text>
-                      <ChevronDown size={20} color="#9ca3af" />
-                    </TouchableOpacity>
-                  )}
-
-                  {routeLocL2 && locL3Options.length > 0 && (
-                    <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Track/Point', locL3Options, routeLocL3, setRouteLocL3)}>
-                      <Text style={routeLocL3 ? styles.inputText : styles.placeholderText}>{routeLocL3 ? locL3Options.find(o => o.value === routeLocL3)?.label : 'Select Track/Point'}</Text>
-                      <ChevronDown size={20} color="#9ca3af" />
-                    </TouchableOpacity>
-                  )}
                 </View>
               )}
 
@@ -662,11 +628,11 @@ const CommandCenter = () => {
                 multiline
                 numberOfLines={3}
               />
-              
-              <TouchableOpacity 
-                style={[styles.submitBtn, (!(routeLocL3 || routeLocL2 || routeLocL1) || !routeRemark.trim() || routingSubmitting) && styles.submitBtnDisabled]} 
+
+              <TouchableOpacity
+                style={[styles.submitBtn, (!routeLocL1 || !routeRemark.trim() || routingSubmitting) && styles.submitBtnDisabled]}
                 onPress={handleRouteSubmit}
-                disabled={!(routeLocL3 || routeLocL2 || routeLocL1) || !routeRemark.trim() || routingSubmitting}
+                disabled={!routeLocL1 || !routeRemark.trim() || routingSubmitting}
               >
                 {routingSubmitting ? (
                   <ActivityIndicator color="#fff" />
@@ -685,8 +651,8 @@ const CommandCenter = () => {
         <View style={styles.pickerOverlay}>
           <View style={[styles.pickerContent, { maxHeight: '80%' }]}>
             <View style={styles.pickerHeader}>
-              <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                <Clock color="#0284c7" size={20} style={{marginRight: 8}} />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Clock color="#0284c7" size={20} style={{ marginRight: 8 }} />
                 <Text style={styles.pickerTitle}>History: {selectedHistoryAsset?.assetNumber}</Text>
               </View>
               <TouchableOpacity onPress={() => setHistoryModalVisible(false)} style={styles.pickerCloseBtn}>
@@ -728,7 +694,7 @@ const CommandCenter = () => {
         </View>
       </Modal>
 
-      <CustomPickerModal 
+      <CustomPickerModal
         visible={pickerConfig.visible}
         title={pickerConfig.title}
         items={pickerConfig.items}

@@ -19,6 +19,15 @@ export class ShuntingProgramsService {
     return newProgram.save();
   }
 
+  async findAllPaginated(page: number, limit: number): Promise<{ data: ShuntingProgram[], total: number, page: number, limit: number, totalPages: number }> {
+    const skip = (page - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.shuntingProgramModel.find().populate('createdBy', 'name email').sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
+      this.shuntingProgramModel.countDocuments()
+    ]);
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
   async findAll(): Promise<ShuntingProgram[]> {
     return this.shuntingProgramModel.find().populate('createdBy', 'name email').sort({ createdAt: -1 }).exec();
   }

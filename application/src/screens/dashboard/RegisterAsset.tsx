@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ChevronDown, TrainFront, X } from 'lucide-react-native';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface IdentificationRule {
   type: 'NUMERIC' | 'ALPHANUMERIC';
@@ -68,6 +69,7 @@ const CustomPickerModal = ({
 };
 
 export default function RegisterAsset() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +78,14 @@ export default function RegisterAsset() {
   const [operation, setOperation] = useState<'REPAIRING' | 'MANUFACTURING'>('REPAIRING');
   const [assetNumber, setAssetNumber] = useState('');
   const [remark, setRemark] = useState('');
+
+  useEffect(() => {
+    if (user?.role === 'MANUFACTURING_SUPERVISOR') {
+      setOperation('MANUFACTURING');
+    } else {
+      setOperation('REPAIRING');
+    }
+  }, [user]);
 
   // Hierarchies
   const [categoryHierarchy, setCategoryHierarchy] = useState<CategoryNode[]>([]);
@@ -137,11 +147,11 @@ export default function RegisterAsset() {
     const finalCat = catL3 || catL2 || catL1;
     const finalLoc = selectedLocation;
 
-    if (!assetNumber || !finalCat || !finalLoc) {
+    if (!assetNumber || !finalCat || !finalLoc || !remark.trim()) {
       Toast.show({
         type: 'error',
         text1: 'Validation Error',
-        text2: 'Please fill out all required fields (Category, Asset Number, Location)',
+        text2: 'Please fill out all required fields (Category, Asset Number, Location, Remark)',
       });
       return;
     }
@@ -263,18 +273,22 @@ export default function RegisterAsset() {
             <View style={styles.section}>
               <Text style={styles.label}>Operation Type <Text style={styles.required}>*</Text></Text>
               <View style={styles.toggleRow}>
-                <TouchableOpacity 
-                  style={[styles.toggleBtn, operation === 'REPAIRING' && styles.toggleBtnActive]}
-                  onPress={() => handleOperationChange('REPAIRING')}
-                >
-                  <Text style={[styles.toggleText, operation === 'REPAIRING' && styles.toggleTextActive]}>Repairing</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.toggleBtn, operation === 'MANUFACTURING' && styles.toggleBtnActive]}
-                  onPress={() => handleOperationChange('MANUFACTURING')}
-                >
-                  <Text style={[styles.toggleText, operation === 'MANUFACTURING' && styles.toggleTextActive]}>Manufacturing</Text>
-                </TouchableOpacity>
+                {user?.role !== 'MANUFACTURING_SUPERVISOR' && (
+                  <TouchableOpacity 
+                    style={[styles.toggleBtn, operation === 'REPAIRING' && styles.toggleBtnActive]}
+                    onPress={() => handleOperationChange('REPAIRING')}
+                  >
+                    <Text style={[styles.toggleText, operation === 'REPAIRING' && styles.toggleTextActive]}>Repairing</Text>
+                  </TouchableOpacity>
+                )}
+                {user?.role !== 'REPAIR_SUPERVISOR' && (
+                  <TouchableOpacity 
+                    style={[styles.toggleBtn, operation === 'MANUFACTURING' && styles.toggleBtnActive]}
+                    onPress={() => handleOperationChange('MANUFACTURING')}
+                  >
+                    <Text style={[styles.toggleText, operation === 'MANUFACTURING' && styles.toggleTextActive]}>Manufacturing</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
@@ -328,10 +342,10 @@ export default function RegisterAsset() {
 
             {/* Remark */}
             <View style={styles.section}>
-              <Text style={styles.label}>Initial Remark</Text>
+              <Text style={styles.label}>Initial Remark <Text style={styles.required}>*</Text></Text>
               <TextInput
                 style={[styles.textInput, styles.textArea]}
-                placeholder="Optional notes or details"
+                placeholder="Enter notes or details"
                 value={remark}
                 onChangeText={setRemark}
                 placeholderTextColor="#9ca3af"
@@ -379,7 +393,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     borderBottomColor: '#f1f5f9',
   },
   headerTitle: {

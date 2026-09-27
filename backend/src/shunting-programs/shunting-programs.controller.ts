@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
 import { ShuntingProgramsService } from './shunting-programs.service.js';
 import { CreateShuntingProgramDto } from './dto/create-shunting-program.dto.js';
 import { UpdateShuntingProgramDto } from './dto/update-shunting-program.dto.js';
@@ -22,7 +22,10 @@ export class ShuntingProgramsController {
 
   @Get()
   @Roles(UserRole.REPAIR_SUPERVISOR, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
-  findAll() {
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    if (page && limit) {
+      return this.shuntingProgramsService.findAllPaginated(Number(page), Number(limit));
+    }
     return this.shuntingProgramsService.findAll();
   }
 

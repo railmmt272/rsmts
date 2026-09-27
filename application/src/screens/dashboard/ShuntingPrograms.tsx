@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ClipboardList, Plus, Clock, CheckCircle2, Edit2, Trash2, X } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 
@@ -19,6 +20,12 @@ const ShuntingPrograms = () => {
   const [programs, setPrograms] = useState<ShuntingProgram[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const limit = 10;
+  
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [programToEdit, setProgramToEdit] = useState<ShuntingProgram | null>(null);
@@ -32,20 +39,64 @@ const ShuntingPrograms = () => {
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'DONE'>('ALL');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(null);
+  
+  // Expanded Cards
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const lastTapRef = React.useRef<{[key: string]: number}>({});
+
+  const handleCardPress = (id: string) => {
+    const now = Date.now();
+    const lastTap = lastTapRef.current[id] || 0;
+    if (now - lastTap < 300) {
+      setExpandedCards(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      lastTapRef.current[id] = 0;
+    } else {
+      lastTapRef.current[id] = now;
+    }
+  };
 
   useEffect(() => {
-    fetchPrograms();
+    fetchPrograms(1);
   }, []);
 
-  const fetchPrograms = async () => {
+  const fetchPrograms = async (pageNumber = 1) => {
     try {
-      setLoading(true);
+      if (pageNumber === 1) setLoading(true);
+      else setLoadingMore(true);
+
       const [programsRes, locsRes] = await Promise.all([
-        api.get('/shunting-programs'),
-        api.get('/locations?isActive=true').catch(() => ({ data: [] }))
+        api.get(`/shunting-programs?page=${pageNumber}&limit=${limit}`),
+        pageNumber === 1 ? api.get('/locations?isActive=true').catch(() => ({ data: [] })) : Promise.resolve({ data: locations })
       ]);
-      setPrograms(programsRes.data);
-      setLocations(locsRes.data);
+      
+      const responseData = programsRes.data;
+      const isPaginated = !Array.isArray(responseData);
+      const newPrograms = isPaginated ? responseData.data : responseData;
+      
+      if (pageNumber === 1) {
+        setPrograms(newPrograms);
+        if (locsRes.data.length > 0) setLocations(locsRes.data);
+      } else {
+        if (!isPaginated) {
+          setHasMore(false);
+          return;
+        }
+        setPrograms(prev => {
+          const existingIds = new Set(prev.map(p => p._id));
+          const uniqueNew = newPrograms.filter((p: ShuntingProgram) => !existingIds.has(p._id));
+          return [...prev, ...uniqueNew];
+        });
+      }
+      
+      setHasMore(isPaginated ? newPrograms.length === limit : false);
+      setPage(pageNumber);
     } catch (err: any) {
       Toast.show({
         type: 'error',
@@ -54,7 +105,18 @@ const ShuntingPrograms = () => {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  const handleLoadMore = () => {
+    if (!loading && !loadingMore && hasMore) {
+      fetchPrograms(page + 1);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchPrograms(1);
   };
 
   const handleDelete = (id: string) => {
@@ -70,7 +132,7 @@ const ShuntingPrograms = () => {
             try {
               await api.delete(`/shunting-programs/${id}`);
               Toast.show({ type: 'success', text1: 'Deleted', text2: 'Program deleted successfully' });
-              fetchPrograms();
+              fetchPrograms(1);
             } catch (err) {
               Toast.show({ type: 'error', text1: 'Delete Failed', text2: 'Could not delete program' });
             }
@@ -93,7 +155,7 @@ const ShuntingPrograms = () => {
             try {
               await api.patch(`/shunting-programs/${program._id}`, { status: newStatus });
               Toast.show({ type: 'success', text1: 'Status Updated', text2: `Program marked as ${newStatus}` });
-              fetchPrograms();
+              fetchPrograms(1);
             } catch (err) {
               Toast.show({ type: 'error', text1: 'Update Failed', text2: 'Could not update status' });
             }
@@ -132,7 +194,7 @@ const ShuntingPrograms = () => {
         Toast.show({ type: 'success', text1: 'Created', text2: 'Program created successfully' });
       }
       setModalVisible(false);
-      fetchPrograms();
+      fetchPrograms(1);
     } catch (err) {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Could not save program' });
     } finally {
@@ -145,13 +207,30 @@ const ShuntingPrograms = () => {
     if (statusFilter !== 'ALL') {
       result = result.filter(p => p.status === statusFilter);
     }
+    
+    if (dateRange.start && dateRange.start.length === 10) {
+      const start = new Date(dateRange.start);
+      if (!isNaN(start.getTime())) {
+        start.setHours(0, 0, 0, 0);
+        result = result.filter(p => new Date(p.createdAt) >= start);
+      }
+    }
+    
+    if (dateRange.end && dateRange.end.length === 10) {
+      const end = new Date(dateRange.end);
+      if (!isNaN(end.getTime())) {
+        end.setHours(23, 59, 59, 999);
+        result = result.filter(p => new Date(p.createdAt) <= end);
+      }
+    }
+
     result.sort((a, b) => {
       if (a.status === 'PENDING' && b.status === 'DONE') return -1;
       if (a.status === 'DONE' && b.status === 'PENDING') return 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     return result;
-  }, [programs, statusFilter]);
+  }, [programs, statusFilter, dateRange]);
 
   const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.role === 'ADMIN';
 
@@ -171,7 +250,7 @@ const ShuntingPrograms = () => {
       </View>
 
       <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
           {['ALL', 'PENDING', 'DONE'].map(status => (
             <TouchableOpacity 
               key={status} 
@@ -184,6 +263,46 @@ const ShuntingPrograms = () => {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        
+        <View style={styles.dateFilterContainer}>
+          <TouchableOpacity 
+            style={styles.dateInputBtn} 
+            onPress={() => setShowDatePicker('start')}
+          >
+            <Text style={dateRange.start ? styles.dateInputText : styles.dateInputPlaceholder}>
+              {dateRange.start || 'Start Date'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.dateToText}>to</Text>
+          <TouchableOpacity 
+            style={styles.dateInputBtn} 
+            onPress={() => setShowDatePicker('end')}
+          >
+            <Text style={dateRange.end ? styles.dateInputText : styles.dateInputPlaceholder}>
+              {dateRange.end || 'End Date'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={showDatePicker === 'start' && dateRange.start ? new Date(dateRange.start) : (showDatePicker === 'end' && dateRange.end ? new Date(dateRange.end) : new Date())}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              const currentPicker = showDatePicker;
+              if (Platform.OS === 'android') {
+                setShowDatePicker(null);
+              }
+              if (event.type === 'set' && selectedDate) {
+                const dateStr = selectedDate.toISOString().split('T')[0];
+                setDateRange(prev => ({ ...prev, [currentPicker]: dateStr }));
+              } else if (event.type === 'dismissed') {
+                setShowDatePicker(null);
+              }
+            }}
+          />
+        )}
       </View>
 
       {loading ? (
@@ -194,8 +313,17 @@ const ShuntingPrograms = () => {
           keyExtractor={item => item._id}
           contentContainerStyle={{ padding: 16 }}
           ListEmptyComponent={<Text style={styles.emptyText}>No shunting programs found.</Text>}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          onRefresh={handleRefresh}
+          refreshing={loading}
+          ListFooterComponent={() => loadingMore ? <ActivityIndicator size="small" color="#0284c7" style={{ marginVertical: 16 }} /> : null}
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <TouchableOpacity 
+              activeOpacity={0.9} 
+              onPress={() => handleCardPress(item._id)}
+              style={styles.card}
+            >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardDate}>{new Date(item.createdAt).toLocaleDateString()}</Text>
                 <TouchableOpacity 
@@ -211,29 +339,38 @@ const ShuntingPrograms = () => {
               
               <View style={styles.cardBody}>
                 <Text style={styles.shopName}>{item.shop}</Text>
-                <Text style={styles.remarkText}>{item.remark}</Text>
+                <Text 
+                  style={styles.remarkText}
+                  numberOfLines={expandedCards.has(item._id) ? undefined : 2}
+                >
+                  {item.remark}
+                </Text>
               </View>
 
               <View style={styles.cardActions}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => openModal(item)}>
-                  <Edit2 size={16} color="#0284c7" />
-                  <Text style={[styles.actionBtnText, { color: '#0284c7' }]}>Edit</Text>
+                <TouchableOpacity style={styles.iconBtn} onPress={() => openModal(item)}>
+                  <Edit2 size={20} color="#0284c7" />
                 </TouchableOpacity>
                 {isAdmin && (
-                  <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item._id)}>
-                    <Trash2 size={16} color="#dc2626" />
-                    <Text style={[styles.actionBtnText, { color: '#dc2626' }]}>Delete</Text>
+                  <TouchableOpacity style={styles.iconBtn} onPress={() => handleDelete(item._id)}>
+                    <Trash2 size={20} color="#dc2626" />
                   </TouchableOpacity>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         />
       )}
 
       {/* Add/Edit Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+      <Modal 
+        visible={modalVisible} 
+        transparent 
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} />
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{programToEdit ? 'Edit Program' : 'New Program'}</Text>
@@ -242,7 +379,7 @@ const ShuntingPrograms = () => {
               </TouchableOpacity>
             </View>
             
-            <View style={styles.modalBody}>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <Text style={styles.inputLabel}>Shop Location</Text>
               <TouchableOpacity 
                 style={styles.dropdownInput}
@@ -275,14 +412,20 @@ const ShuntingPrograms = () => {
                   <Text style={styles.submitBtnText}>{programToEdit ? 'Save Changes' : 'Create Program'}</Text>
                 )}
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
       {/* Reusable Location Picker Modal */}
-      <Modal visible={pickerVisible} transparent animationType="slide">
+      <Modal 
+        visible={pickerVisible} 
+        transparent 
+        animationType="slide"
+        onRequestClose={() => setPickerVisible(false)}
+      >
         <View style={styles.pickerOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setPickerVisible(false)} />
           <View style={styles.pickerContent}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>Select Shop</Text>
@@ -319,7 +462,7 @@ const ShuntingPrograms = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -328,8 +471,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 0,
     borderBottomColor: '#e2e8f0',
   },
   headerLeft: {
@@ -369,20 +512,51 @@ const styles = StyleSheet.create({
   filterTab: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
     marginRight: 8,
   },
   filterTabActive: {
     backgroundColor: '#0f172a',
+    borderColor: '#0f172a',
   },
   filterTabText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#64748b',
+    fontWeight: '600',
+    color: '#475569',
   },
   filterTabTextActive: {
     color: '#fff',
+  },
+  dateFilterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateInputBtn: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  dateInputText: {
+    fontSize: 13,
+    color: '#0f172a',
+  },
+  dateInputPlaceholder: {
+    fontSize: 13,
+    color: '#9ca3af',
+  },
+  dateToText: {
+    marginHorizontal: 10,
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
   },
   emptyText: {
     textAlign: 'center',
@@ -419,7 +593,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 1,
   },
   statusBadgeDone: {
@@ -445,9 +619,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   shopName: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#64748b',
     marginBottom: 6,
   },
   remarkText: {
@@ -462,19 +636,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     justifyContent: 'flex-end',
   },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  iconBtn: {
     marginLeft: 16,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: '#f8fafc',
-    borderRadius: 6,
-  },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginLeft: 6,
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
   },
   modalOverlay: {
     flex: 1,
@@ -485,8 +651,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    minHeight: '50%',
+    maxHeight: '95%',
     padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -502,9 +669,7 @@ const styles = StyleSheet.create({
   closeBtn: {
     padding: 4,
   },
-  modalBody: {
-    flex: 1,
-  },
+  modalBody: {},
   inputLabel: {
     fontSize: 13,
     fontWeight: '600',
