@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Asset } from '../screens/dashboard/CommandCenter';
 import { ChevronDown, ChevronRight } from 'lucide-react-native';
+import LocationCard from './LocationCard';
 
 interface Location {
   code: string;
@@ -59,19 +60,18 @@ export default function LocationsTopologyView({ locations, assets, loading, erro
 
         return (
           <View key={loc.code} style={styles.groupContainer}>
-            <TouchableOpacity 
-              style={[styles.groupHeader, isExpanded && styles.groupHeaderExpanded]} 
+            <LocationCard
+              location={loc}
               onPress={() => toggleLocation(loc.code)}
+              rightAccessory={
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={styles.occupancyBadge}>
+                    <Text style={styles.occupancyText}>{locAssets.length} Assets</Text>
+                  </View>
+                  {isExpanded ? <ChevronDown size={20} color="#6b7280" /> : <ChevronRight size={20} color="#9ca3af" />}
+                </View>
+              }
             >
-              <View style={styles.headerLeft}>
-                {isExpanded ? <ChevronDown size={20} color="#6b7280" /> : <ChevronRight size={20} color="#9ca3af" />}
-                <Text style={styles.groupCode}>{loc.code}</Text>
-              </View>
-              <View style={styles.occupancyBadge}>
-                <Text style={styles.occupancyText}>{locAssets.length} Assets</Text>
-              </View>
-            </TouchableOpacity>
-            
             {isExpanded && (
               <View style={styles.assetsList}>
                 {locAssets.length === 0 ? (
@@ -88,6 +88,7 @@ export default function LocationsTopologyView({ locations, assets, loading, erro
                 )}
               </View>
             )}
+            </LocationCard>
           </View>
         );
       })}

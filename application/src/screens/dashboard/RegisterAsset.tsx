@@ -8,6 +8,7 @@ import Toast from 'react-native-toast-message';
 import { ChevronDown, TrainFront, X } from 'lucide-react-native';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import LocationPickerModal from '../../components/LocationPickerModal';
 
 interface IdentificationRule {
   type: 'NUMERIC' | 'ALPHANUMERIC';
@@ -108,6 +109,8 @@ export default function RegisterAsset() {
   }>({
     visible: false, title: '', items: [], selectedValue: '', onSelect: () => {}
   });
+
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
 
   useEffect(() => {
     fetchHierarchies();
@@ -332,9 +335,9 @@ export default function RegisterAsset() {
             {/* Location Selection */}
             <View style={styles.section}>
               <Text style={styles.label}>Initial Location <Text style={styles.required}>*</Text></Text>
-              <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Location', locationOptions, selectedLocation, setSelectedLocation)}>
+              <TouchableOpacity style={styles.dropdownInput} onPress={() => setLocationPickerVisible(true)}>
                 <Text style={selectedLocation ? styles.inputText : styles.placeholderText}>
-                  {selectedLocation ? locationOptions.find((o: any) => o.value === selectedLocation)?.label : 'Select Initial Location'}
+                  {selectedLocation ? locations.find((o: any) => o.code === selectedLocation)?.name : 'Select Initial Location'}
                 </Text>
                 <ChevronDown size={20} color="#9ca3af" />
               </TouchableOpacity>
@@ -378,6 +381,15 @@ export default function RegisterAsset() {
         selectedValue={pickerConfig.selectedValue}
         onSelect={pickerConfig.onSelect}
         onClose={() => setPickerConfig(prev => ({ ...prev, visible: false }))}
+      />
+
+      <LocationPickerModal 
+        visible={locationPickerVisible}
+        onClose={() => setLocationPickerVisible(false)}
+        title="Select Initial Location"
+        locations={locations}
+        onSelect={setSelectedLocation}
+        selectedCode={selectedLocation}
       />
     </SafeAreaView>
   );

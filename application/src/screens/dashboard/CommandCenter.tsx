@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, SlidersHorizontal, CheckCircle2, Circle, X, ChevronDown, Clock } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
@@ -109,7 +109,15 @@ const CommandCenter = () => {
   const [selectedLocation, setSelectedLocation] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+  const tapTimeoutRef = React.useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchAssets();
+    setRefreshing(false);
+  };
   const [activePipeline, setActivePipeline] = useState<'REPAIRING' | 'MANUFACTURING' | 'LOCATIONS'>(
     showRepair ? 'REPAIRING' : showMfg ? 'MANUFACTURING' : 'LOCATIONS'
   );
@@ -141,11 +149,20 @@ const CommandCenter = () => {
   const handleCardPress = (asset: Asset) => {
     const now = Date.now();
     const lastTap = lastTapRef.current[asset._id] || 0;
+    
     if (now - lastTap < 300) {
-      openHistoryModal(asset);
+      // Double tap
+      if (tapTimeoutRef.current[asset._id]) {
+        clearTimeout(tapTimeoutRef.current[asset._id]);
+      }
+      setExpandedCards(prev => ({ ...prev, [asset._id]: !prev[asset._id] }));
       lastTapRef.current[asset._id] = 0;
     } else {
+      // Single tap
       lastTapRef.current[asset._id] = now;
+      tapTimeoutRef.current[asset._id] = setTimeout(() => {
+        openHistoryModal(asset);
+      }, 300);
     }
   };
 
@@ -445,7 +462,13 @@ const CommandCenter = () => {
         <SlidersHorizontal size={16} color="#64748b" style={styles.filterIcon} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0ea5e9']} />
+        }
+      >
         <Text style={styles.pageTitle}>Workshop Operations Command Center</Text>
 
         {/* Pipelines Tabs */}
@@ -555,7 +578,7 @@ const CommandCenter = () => {
                     </View>
                   </View>
                   <View style={styles.remarkRow}>
-                    <Text style={styles.label} numberOfLines={2}>Remarks: <Text style={styles.value}>{asset.remark || 'N/A'}</Text></Text>
+                    <Text style={styles.label} numberOfLines={expandedCards[asset._id] ? undefined : 2}>Remarks: <Text style={styles.value}>{asset.remark || 'N/A'}</Text></Text>
                   </View>
                   <View style={styles.cardActions}>
                     {asset.status !== 'DISPATCHED' && (

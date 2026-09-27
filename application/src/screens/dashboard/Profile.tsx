@@ -61,9 +61,16 @@ const Profile = () => {
           <Text style={styles.greeting}>Hi, {user.name}</Text>
           <Text style={styles.userName}>{user.role}</Text>
         </View>
+        <TouchableOpacity 
+          style={styles.headerEditBtn} 
+          onPress={() => isEditing ? handleSave() : setIsEditing(true)}
+          disabled={isSaving}
+        >
+          {isEditing ? <Check size={20} color="#0f172a" /> : <Edit2 size={20} color="#0f172a" />}
+        </TouchableOpacity>
       </View>
       
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
           <View style={styles.infoRow}>
             <User size={20} color="#64748b" />
@@ -149,25 +156,6 @@ const Profile = () => {
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.editButton} 
-          onPress={() => isEditing ? handleSave() : setIsEditing(true)}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator color="#ffffff" size="small" />
-          ) : isEditing ? (
-            <>
-              <Check size={18} color="#ffffff" />
-              <Text style={styles.editButtonText}>Save Changes</Text>
-            </>
-          ) : (
-            <>
-              <Edit2 size={18} color="#ffffff" />
-              <Text style={styles.editButtonText}>Update Details</Text>
-            </>
-          )}
-        </TouchableOpacity>
 
         {!isEditing && (
           <TouchableOpacity 
@@ -195,6 +183,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  headerEditBtn: {
+    padding: 8,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    marginLeft: 12,
   },
   logoContainer: {
     width: 44,
@@ -208,7 +204,9 @@ const styles = StyleSheet.create({
     height: 40,
   },
   userInfo: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
+    flex: 1,
+    paddingLeft: 12,
   },
   greeting: {
     fontSize: 13,
@@ -222,10 +220,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textTransform: 'uppercase',
   },
-  container: {
+  scrollContent: {
     padding: 16,
-    paddingVertical: 4,
-    marginBottom: 8,
+    paddingBottom: 40,
   },
   badgeRow: {
     flexDirection: 'row',

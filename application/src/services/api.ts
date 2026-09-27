@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
 const API_URL = 'https://railsmts.onrender.com';
 
@@ -60,6 +61,14 @@ api.interceptors.response.use(
         await AsyncStorage.removeItem('refreshToken');
         return Promise.reject(refreshError);
       }
+    }
+
+    if (error.response?.status >= 500) {
+      Toast.show({
+        type: 'error',
+        text1: 'Server Connection Error',
+        text2: `Encountered an issue reaching the server (${error.response.status}). Please try pulling to refresh.`,
+      });
     }
 
     return Promise.reject(error);

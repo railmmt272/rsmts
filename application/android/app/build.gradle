@@ -60,6 +60,11 @@ react {
 def enableProguardInReleaseBuilds = true
 
 /**
+ * Set this to true to create separate APKs instead of one universal APK.
+ */
+def enableSeparateBuildPerCPUArchitecture = true
+
+/**
  * The preferred build flavor of JavaScriptCore (JSC)
  *
  * For example, to use the international variant, you can use:
@@ -84,6 +89,14 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+    }
+    splits {
+        abi {
+            reset()
+            enable enableSeparateBuildPerCPUArchitecture
+            universalApk false
+            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+        }
     }
     signingConfigs {
         debug {

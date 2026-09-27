@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import LocationPickerModal from '../../components/LocationPickerModal';
 
 interface ShuntingProgram {
   _id: string;
@@ -418,42 +419,14 @@ const ShuntingPrograms = () => {
       </Modal>
 
       {/* Reusable Location Picker Modal */}
-      <Modal 
-        visible={pickerVisible} 
-        transparent 
-        animationType="slide"
-        onRequestClose={() => setPickerVisible(false)}
-      >
-        <View style={styles.pickerOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setPickerVisible(false)} />
-          <View style={styles.pickerContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Shop</Text>
-              <TouchableOpacity onPress={() => setPickerVisible(false)} style={styles.closeBtn}>
-                <X size={24} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={locations}
-              keyExtractor={(item) => item.code}
-              renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={[styles.pickerItem, shop === item.code && styles.pickerItemSelected]}
-                  onPress={() => {
-                    setShop(item.code);
-                    setPickerVisible(false);
-                  }}
-                >
-                  <Text style={[styles.pickerItemText, shop === item.code && styles.pickerItemTextSelected]}>
-                    {item.name} ({item.code})
-                  </Text>
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={<Text style={styles.emptyText}>No locations available</Text>}
-            />
-          </View>
-        </View>
-      </Modal>
+      <LocationPickerModal
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        title="Select Shop"
+        locations={locations}
+        onSelect={setShop}
+        selectedCode={shop}
+      />
 
     </SafeAreaView>
   );
