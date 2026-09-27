@@ -163,10 +163,8 @@ export default function LoginPage() {
         <div className="absolute top-8 right-8 flex items-center gap-3">
           {/* Download App */}
           <a
-            href="https://rsmts.netlify.app/RSMTS_Jamalpur.apk"
-            target="_blank"
-            rel="noopener noreferrer"
-            download
+            href="/rsmts_jamalpur.apk"
+            download="RSMTS_Jamalpur.apk"
             className="flex items-center gap-2 px-3 py-1.5 border border-blue-200 bg-blue-50 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
           >
             <Download size={16} />
