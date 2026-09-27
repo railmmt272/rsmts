@@ -10,9 +10,10 @@ interface Props {
   locations: LocationNode[];
   onSelect: (code: string) => void;
   selectedCode?: string;
+  allowAll?: boolean;
 }
 
-export default function LocationPickerModal({ visible, onClose, title, locations, onSelect, selectedCode }: Props) {
+export default function LocationPickerModal({ visible, onClose, title, locations, onSelect, selectedCode, allowAll }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -28,6 +29,21 @@ export default function LocationPickerModal({ visible, onClose, title, locations
             data={locations}
             keyExtractor={item => item.code}
             contentContainerStyle={styles.listContent}
+            ListHeaderComponent={
+              allowAll ? (
+                <TouchableOpacity
+                  style={[styles.allOption, selectedCode === 'ALL' && styles.allOptionSelected]}
+                  onPress={() => {
+                    onSelect('ALL');
+                    onClose();
+                  }}
+                >
+                  <Text style={[styles.allOptionText, selectedCode === 'ALL' && styles.allOptionTextSelected]}>
+                    All Locations
+                  </Text>
+                </TouchableOpacity>
+              ) : undefined
+            }
             renderItem={({ item }) => (
               <LocationCard 
                 location={item} 
@@ -82,5 +98,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#64748b',
     marginTop: 20,
+  },
+  allOption: {
+    padding: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  allOptionSelected: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  allOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#475569',
+  },
+  allOptionTextSelected: {
+    color: '#2563eb',
+    fontWeight: '600',
   },
 });

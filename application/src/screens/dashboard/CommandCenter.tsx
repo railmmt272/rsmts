@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import LocationsTopologyView from '../../components/LocationsTopologyView';
+import LocationPickerModal from '../../components/LocationPickerModal';
 
 // Shared types
 export interface Asset {
@@ -42,45 +43,7 @@ export interface MovementLog {
   remark: string;
 }
 
-// Custom Modal Picker Component
-const CustomPickerModal = ({
-  visible, onClose, title, items, onSelect, selectedValue
-}: {
-  visible: boolean, onClose: () => void, title: string, items: { label: string, value: string }[], onSelect: (val: string) => void, selectedValue: string
-}) => {
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.pickerOverlay}>
-        <View style={styles.pickerContent}>
-          <View style={styles.pickerHeader}>
-            <Text style={styles.pickerTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.pickerCloseBtn}>
-              <X color="#64748b" size={24} />
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={items}
-            keyExtractor={item => item.value}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.pickerItem, selectedValue === item.value && styles.pickerItemSelected]}
-                onPress={() => {
-                  onSelect(item.value);
-                  onClose();
-                }}
-              >
-                <Text style={[styles.pickerItemText, selectedValue === item.value && styles.pickerItemTextSelected]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={<Text style={styles.pickerEmptyText}>No options available</Text>}
-          />
-        </View>
-      </View>
-    </Modal>
-  );
-};
+// Removed CustomPickerModal
 
 const repairTabs = [
   { id: 'ALL', label: 'All Repair' },
@@ -105,7 +68,7 @@ const CommandCenter = () => {
   // State
   const [assets, setAssets] = useState<Asset[]>([]);
   const [locations, setLocations] = useState<LocationNode[]>([]);
-  const [flatLocations, setFlatLocations] = useState<{ code: string, name: string }[]>([]);
+  const [flatLocations, setFlatLocations] = useState<LocationNode[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -184,11 +147,12 @@ const CommandCenter = () => {
   const [pickerConfig, setPickerConfig] = useState<{
     visible: boolean;
     title: string;
-    items: { label: string, value: string }[];
+    locations: LocationNode[];
     selectedValue: string;
     onSelect: (val: string) => void;
+    allowAll?: boolean;
   }>({
-    visible: false, title: '', items: [], selectedValue: '', onSelect: () => { }
+    visible: false, title: '', locations: [], selectedValue: '', onSelect: () => { }
   });
 
   useEffect(() => {
@@ -260,11 +224,12 @@ const CommandCenter = () => {
 
   const openPicker = (
     title: string,
-    items: { label: string, value: string }[],
+    locations: LocationNode[],
     selectedValue: string,
-    onSelect: (val: string) => void
+    onSelect: (val: string) => void,
+    allowAll?: boolean
   ) => {
-    setPickerConfig({ visible: true, title, items, selectedValue, onSelect });
+    setPickerConfig({ visible: true, title, locations, selectedValue, onSelect, allowAll });
   };
 
   const allowedHierarchy = useMemo(() => {
@@ -506,9 +471,10 @@ const CommandCenter = () => {
                 style={[styles.dropdownInput, { padding: 8, paddingVertical: 6, minHeight: 36, width: 140, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                 onPress={() => openPicker(
                   'Filter by Location',
-                  [{ label: 'All Locations', value: 'ALL' }, ...flatLocations.map(l => ({ label: `${l.name} (${l.code})`, value: l.code }))],
+                  flatLocations,
                   selectedLocation,
-                  setSelectedLocation
+                  setSelectedLocation,
+                  true
                 )}
               >
                 <Text style={[selectedLocation !== 'ALL' ? styles.inputText : styles.placeholderText, { fontSize: 13, flex: 1, marginRight: 8 }]} numberOfLines={1}>
@@ -634,7 +600,7 @@ const CommandCenter = () => {
               ) : (
                 <View style={{ marginBottom: 20 }}>
                   <Text style={styles.modalLabel}>Select Destination <Text style={styles.required}>*</Text></Text>
-                  <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Destination', allowedDestinations.map(d => ({ label: d, value: d })), routeLocL1, setRouteLocL1)}>
+                  <TouchableOpacity style={styles.dropdownInput} onPress={() => openPicker('Select Destination', allowedDestinations.map(d => { const l = flatLocations.find(loc => loc.code === d); return { code: d, name: l ? l.name : d, category: 'COMMON', locationType: 'ANY', maxCapacity: 0 }; }), routeLocL1, setRouteLocL1)}>
                     <Text style={routeLocL1 ? styles.inputText : styles.placeholderText}>{routeLocL1 || 'Select Destination'}</Text>
                     <ChevronDown size={20} color="#9ca3af" />
                   </TouchableOpacity>
@@ -717,12 +683,13 @@ const CommandCenter = () => {
         </View>
       </Modal>
 
-      <CustomPickerModal
+      <LocationPickerModal
         visible={pickerConfig.visible}
         title={pickerConfig.title}
-        items={pickerConfig.items}
-        selectedValue={pickerConfig.selectedValue}
+        locations={pickerConfig.locations}
+        selectedCode={pickerConfig.selectedValue}
         onSelect={pickerConfig.onSelect}
+        allowAll={pickerConfig.allowAll}
         onClose={() => setPickerConfig(prev => ({ ...prev, visible: false }))}
       />
     </SafeAreaView>
