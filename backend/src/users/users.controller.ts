@@ -15,13 +15,13 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.VIEWER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.VIEWER, UserRole.OPS_MANAGEMENT)
   @Get()
   findAll() {
     return this.usersService.findAll();
   }
 
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.VIEWER)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.VIEWER, UserRole.OPS_MANAGEMENT)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);

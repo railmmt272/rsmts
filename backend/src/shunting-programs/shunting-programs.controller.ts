@@ -21,7 +21,6 @@ export class ShuntingProgramsController {
   }
 
   @Get()
-  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
   findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
     if (page && limit) {
       return this.shuntingProgramsService.findAllPaginated(Number(page), Number(limit));
@@ -30,7 +29,6 @@ export class ShuntingProgramsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
   findOne(@Param('id') id: string) {
     return this.shuntingProgramsService.findOne(id);
   }
