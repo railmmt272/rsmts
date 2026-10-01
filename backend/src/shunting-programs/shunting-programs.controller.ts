@@ -15,13 +15,13 @@ export class ShuntingProgramsController {
   constructor(private readonly shuntingProgramsService: ShuntingProgramsService) {}
 
   @Post()
-  @Roles(UserRole.REPAIR_SUPERVISOR, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
   create(@Body() createShuntingProgramDto: CreateShuntingProgramDto, @CurrentUser() user: CurrentUserPayload) {
     return this.shuntingProgramsService.create(createShuntingProgramDto, user._id);
   }
 
   @Get()
-  @Roles(UserRole.REPAIR_SUPERVISOR, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
   findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
     if (page && limit) {
       return this.shuntingProgramsService.findAllPaginated(Number(page), Number(limit));
@@ -30,19 +30,19 @@ export class ShuntingProgramsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.REPAIR_SUPERVISOR, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
   findOne(@Param('id') id: string) {
     return this.shuntingProgramsService.findOne(id);
   }
 
   @Patch(':id')
-  @Roles(UserRole.REPAIR_SUPERVISOR, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
   update(@Param('id') id: string, @Body() updateShuntingProgramDto: UpdateShuntingProgramDto) {
     return this.shuntingProgramsService.update(id, updateShuntingProgramDto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.REPAIR_SUPERVISOR, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
   remove(@Param('id') id: string) {
     return this.shuntingProgramsService.remove(id);
   }

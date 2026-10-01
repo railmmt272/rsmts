@@ -76,15 +76,15 @@ export default function RegisterAsset() {
   const [error, setError] = useState<string | null>(null);
 
   // Form State
-  const [operation, setOperation] = useState<'REPAIRING' | 'MANUFACTURING'>('REPAIRING');
+  const [operation, setOperation] = useState<'WAGON_POH' | 'OTHERS'>('WAGON_POH');
   const [assetNumber, setAssetNumber] = useState('');
   const [remark, setRemark] = useState('');
 
   useEffect(() => {
-    if (user?.role === 'MANUFACTURING_SUPERVISOR') {
-      setOperation('MANUFACTURING');
+    if (user?.role === 'OPS_MANAGEMENT') {
+      setOperation('OTHERS');
     } else {
-      setOperation('REPAIRING');
+      setOperation('WAGON_POH');
     }
   }, [user]);
 
@@ -140,7 +140,7 @@ export default function RegisterAsset() {
     setSelectedLocation('');
   };
 
-  const handleOperationChange = (op: 'REPAIRING' | 'MANUFACTURING') => {
+  const handleOperationChange = (op: 'WAGON_POH' | 'OTHERS') => {
     setOperation(op);
     setSelectedLocation(''); // Reset location
     setCatL1(''); setCatL2(''); setCatL3(''); // Reset categories
@@ -207,9 +207,9 @@ export default function RegisterAsset() {
   };
 
   // Derived Category Lists
-  const grandparentOptions = operation === 'MANUFACTURING' 
-    ? categoryHierarchy.filter(c => ['WAGON', 'CRANE'].includes(c.code))
-    : categoryHierarchy;
+  const grandparentOptions = operation === 'OTHERS' 
+    ? categoryHierarchy.filter(c => ['WAGON_MFG', 'LOCO', 'CRANE', 'TOWER_CAR'].includes(c.code))
+    : categoryHierarchy.filter(c => ['WAGON'].includes(c.code));
 
   const catL1Options = grandparentOptions.map(c => ({ label: `${c.name} (${c.code})`, value: c.code }));
   const selectedCatL1Node = grandparentOptions.find(c => c.code === catL1);
@@ -276,22 +276,18 @@ export default function RegisterAsset() {
             <View style={styles.section}>
               <Text style={styles.label}>Operation Type <Text style={styles.required}>*</Text></Text>
               <View style={styles.toggleRow}>
-                {user?.role !== 'MANUFACTURING_SUPERVISOR' && (
                   <TouchableOpacity 
-                    style={[styles.toggleBtn, operation === 'REPAIRING' && styles.toggleBtnActive]}
-                    onPress={() => handleOperationChange('REPAIRING')}
+                    style={[styles.toggleBtn, operation === 'WAGON_POH' && styles.toggleBtnActive]}
+                    onPress={() => handleOperationChange('WAGON_POH')}
                   >
-                    <Text style={[styles.toggleText, operation === 'REPAIRING' && styles.toggleTextActive]}>Repairing</Text>
+                    <Text style={[styles.toggleText, operation === 'WAGON_POH' && styles.toggleTextActive]}>Wagon POH</Text>
                   </TouchableOpacity>
-                )}
-                {user?.role !== 'REPAIR_SUPERVISOR' && (
                   <TouchableOpacity 
-                    style={[styles.toggleBtn, operation === 'MANUFACTURING' && styles.toggleBtnActive]}
-                    onPress={() => handleOperationChange('MANUFACTURING')}
+                    style={[styles.toggleBtn, operation === 'OTHERS' && styles.toggleBtnActive]}
+                    onPress={() => handleOperationChange('OTHERS')}
                   >
-                    <Text style={[styles.toggleText, operation === 'MANUFACTURING' && styles.toggleTextActive]}>Manufacturing</Text>
+                    <Text style={[styles.toggleText, operation === 'OTHERS' && styles.toggleTextActive]}>Others</Text>
                   </TouchableOpacity>
-                )}
               </View>
             </View>
 

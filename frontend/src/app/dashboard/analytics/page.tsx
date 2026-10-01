@@ -67,8 +67,8 @@ export default function AnalyticsPage() {
               className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-gray-900 bg-gray-50"
             >
               <option value="ALL">All Pipelines</option>
-              <option value="REPAIRING">Repairing</option>
-              <option value="MANUFACTURING">Manufacturing</option>
+              <option value="WAGON_POH">Wagon POH</option>
+              <option value="OTHERS">Others</option>
             </select>
           </div>
           <div className="flex flex-col">

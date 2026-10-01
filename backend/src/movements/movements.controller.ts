@@ -10,7 +10,7 @@ export class MovementsController {
   constructor(@Inject(MovementsService) private readonly movementsService: MovementsService) {}
 
   @Post()
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.YARD_CONTROLLER, UserRole.REPAIR_SUPERVISOR, UserRole.MANUFACTURING_SUPERVISOR, UserRole.QA_INSPECTOR)
+  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.OPS_MANAGEMENT)
   async moveAsset(
     @Body() createMovementDto: CreateMovementDto,
     @CurrentUser() user: CurrentUserPayload,

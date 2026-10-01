@@ -53,6 +53,7 @@ async function bootstrap() {
   const categoriesToSeed = [
     // Grandparents
     { code: 'WAGON', name: 'Wagon', level: AssetCategoryLevel.GRANDPARENT, identificationRule: { type: 'NUMERIC', length: 11, checkDigit: false } },
+    { code: 'WAGON_MFG', name: 'Wagon ( MFG )', level: AssetCategoryLevel.GRANDPARENT, identificationRule: { type: 'NUMERIC', length: 11, checkDigit: false } },
     { code: 'LOCO', name: 'Loco', level: AssetCategoryLevel.GRANDPARENT, identificationRule: { type: 'NUMERIC', length: 5, checkDigit: false } },
     { code: 'CRANE', name: 'Crane', level: AssetCategoryLevel.GRANDPARENT, identificationRule: { type: 'NUMERIC', length: 6, checkDigit: false } },
     { code: 'TOWER_CAR', name: 'Tower Car', level: AssetCategoryLevel.GRANDPARENT },

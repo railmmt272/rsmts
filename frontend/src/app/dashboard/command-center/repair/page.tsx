@@ -37,7 +37,7 @@ export default function RepairView() {
     if (searchTerm.trim().length > 0) {
       const lowerSearch = searchTerm.toLowerCase();
       const match = assets.find(a =>
-        a.currentPipeline === "REPAIRING" &&
+        a.currentPipeline === "WAGON_POH" &&
         a.assetNumber.toLowerCase().includes(lowerSearch)
       );
 
@@ -75,8 +75,8 @@ export default function RepairView() {
   }, []);
 
   const filteredAssets = useMemo(() => {
-    // 1. Filter by currentPipeline === REPAIRING
-    let repairAssets = assets.filter((a) => a.currentPipeline === "REPAIRING");
+    // 1. Filter by currentPipeline === WAGON_POH
+    let repairAssets = assets.filter((a) => a.currentPipeline === "WAGON_POH");
 
     // 2. Filter by search term
     if (searchTerm.trim()) {
@@ -153,7 +153,7 @@ export default function RepairView() {
   };
 
   const tabs: { id: RepairTab; label: string }[] = [
-    { id: "ALL", label: "All Repair" },
+    { id: "ALL", label: "All Wagon POH" },
     { id: "READY_TO_DISPATCH", label: "🟡 Ready to Dispatch" },
     { id: "DISPATCHED", label: "✅ Dispatched" },
   ];

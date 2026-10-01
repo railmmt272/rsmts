@@ -79,9 +79,9 @@ export class MovementsService {
           asset.status === AssetStatus.DISPATCHED
         ) {
           asset.status =
-            asset.currentPipeline === 'MANUFACTURING'
-              ? AssetStatus.IN_MANUFACTURING
-              : AssetStatus.IN_REPAIR;
+            asset.currentPipeline === 'OTHERS'
+              ? AssetStatus.IN_OTHERS
+              : AssetStatus.IN_WAGON_POH;
         }
 
         await asset.save({ session });

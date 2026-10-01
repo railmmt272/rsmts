@@ -2,14 +2,14 @@ import mongoose from 'mongoose';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 export enum PipelineOperation {
-  REPAIRING = 'REPAIRING',
-  MANUFACTURING = 'MANUFACTURING',
+  WAGON_POH = 'WAGON_POH',
+  OTHERS = 'OTHERS',
 }
 
 export enum AssetStatus {
   ACTIVE = 'ACTIVE',
-  IN_REPAIR = 'IN_REPAIR',
-  IN_MANUFACTURING = 'IN_MANUFACTURING',
+  IN_WAGON_POH = 'IN_WAGON_POH',
+  IN_OTHERS = 'IN_OTHERS',
   CONDEMNED = 'CONDEMNED',
   READY_TO_DISPATCH = 'READY_TO_DISPATCH',
   DISPATCHED = 'DISPATCHED',

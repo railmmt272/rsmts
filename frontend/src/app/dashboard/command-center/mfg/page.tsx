@@ -36,7 +36,7 @@ export default function MfgView() {
     if (searchTerm.trim().length > 0) {
       const lowerSearch = searchTerm.toLowerCase();
       const match = assets.find(a =>
-        a.currentPipeline === "MANUFACTURING" &&
+        a.currentPipeline === "OTHERS" &&
         a.assetNumber.toLowerCase().includes(lowerSearch)
       );
 
@@ -74,8 +74,8 @@ export default function MfgView() {
   }, []);
 
   const filteredAssets = useMemo(() => {
-    // 1. Filter by currentPipeline === MANUFACTURING
-    let mfgAssets = assets.filter((a) => a.currentPipeline === 'MANUFACTURING');
+    // 1. Filter by currentPipeline === OTHERS
+    let mfgAssets = assets.filter((a) => a.currentPipeline === 'OTHERS');
 
     // 2. Filter by search term
     if (searchTerm.trim()) {
@@ -152,7 +152,7 @@ export default function MfgView() {
   };
 
   const tabs: { id: MfgTab; label: string }[] = [
-    { id: 'ALL', label: 'All MFG' },
+    { id: 'ALL', label: 'All Others' },
     { id: 'READY_TO_DISPATCH', label: '🟡 Ready to Dispatch' },
     { id: 'DISPATCHED', label: '✅ Dispatched' },
   ];

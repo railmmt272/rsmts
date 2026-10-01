@@ -11,7 +11,7 @@ export default function CommandCenterPage() {
   useEffect(() => {
     if (loading) return;
     
-    if (user?.role === 'MANUFACTURING_SUPERVISOR') {
+    if (user?.role === 'OPS_MANAGEMENT') {
       router.replace('/dashboard/command-center/mfg');
     } else {
       router.replace('/dashboard/command-center/repair');

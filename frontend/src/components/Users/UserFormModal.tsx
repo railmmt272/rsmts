@@ -176,10 +176,7 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
             >
               <option value="SYSTEM_ADMIN">System Admin</option>
               <option value="MANAGEMENT">Management</option>
-              <option value="YARD_CONTROLLER">Yard Controller</option>
-              <option value="REPAIR_SUPERVISOR">Repair Supervisor</option>
-              <option value="MANUFACTURING_SUPERVISOR">Manufacturing Supervisor</option>
-              <option value="QA_INSPECTOR">QA Inspector</option>
+              <option value="OPS_MANAGEMENT">Ops Management</option>
               <option value="VIEWER">Viewer</option>
             </select>
           </div>

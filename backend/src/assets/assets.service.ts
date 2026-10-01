@@ -20,17 +20,29 @@ export class AssetsService {
   ) {}
 
   async registerAsset(dto: RegisterAssetDto, user: CurrentUserPayload): Promise<Asset> {
-    if (user.role === UserRole.MANUFACTURING_SUPERVISOR && dto.operation !== PipelineOperation.MANUFACTURING) {
-      throw new ForbiddenException('Manufacturing Supervisors can only register assets in the MANUFACTURING pipeline.');
-    }
-    if (user.role === UserRole.REPAIR_SUPERVISOR && dto.operation !== PipelineOperation.REPAIRING) {
-      throw new ForbiddenException('Repair Supervisors can only register assets in the REPAIR pipeline.');
-    }
+
 
     // 1 & 2. Verify Category exists and is active
     const category = await this.assetCategoriesService.findOne(dto.categoryCode);
     if (!category.isActive) {
       throw new BadRequestException(`Asset category ${dto.categoryCode} is inactive.`);
+    }
+
+    // Pipeline vs Category Validation
+    let currentCategory = category;
+    while (currentCategory.parentCode) {
+      currentCategory = await this.assetCategoriesService.findOne(currentCategory.parentCode);
+    }
+    const rootCategoryCode = currentCategory.code;
+
+    if (dto.operation === PipelineOperation.WAGON_POH) {
+      if (rootCategoryCode !== 'WAGON') {
+        throw new BadRequestException('WAGON_POH pipeline only supports WAGON assets.');
+      }
+    } else if (dto.operation === PipelineOperation.OTHERS) {
+      if (!['WAGON_MFG', 'LOCO', 'CRANE', 'TOWER_CAR'].includes(rootCategoryCode)) {
+        throw new BadRequestException('OTHERS pipeline only supports WAGON_MFG, LOCO, CRANE, and TOWER_CAR assets.');
+      }
     }
 
     // 4. Resolve identification rule
@@ -73,9 +85,9 @@ export class AssetsService {
 
     // 11. Derive pipeline/status
     const currentPipeline = dto.operation;
-    const status = currentPipeline === PipelineOperation.REPAIRING 
-      ? AssetStatus.IN_REPAIR 
-      : AssetStatus.IN_MANUFACTURING;
+    const status = currentPipeline === PipelineOperation.WAGON_POH 
+      ? AssetStatus.IN_WAGON_POH 
+      : AssetStatus.IN_OTHERS;
 
     // 12. Create asset
     const newAsset = new this.assetModel({
@@ -93,11 +105,7 @@ export class AssetsService {
 
   async findAll(user: CurrentUserPayload): Promise<Asset[]> {
     const filter: any = {};
-    if (user.role === UserRole.MANUFACTURING_SUPERVISOR) {
-      filter.currentPipeline = PipelineOperation.MANUFACTURING;
-    } else if (user.role === UserRole.REPAIR_SUPERVISOR) {
-      filter.currentPipeline = PipelineOperation.REPAIRING;
-    }
+
     return this.assetModel.find(filter).sort({ updatedAt: -1 }).exec();
   }
 
@@ -107,12 +115,7 @@ export class AssetsService {
       throw new NotFoundException(`Asset ${assetNumber} not found`);
     }
 
-    if (user.role === UserRole.MANUFACTURING_SUPERVISOR && asset.currentPipeline !== PipelineOperation.MANUFACTURING) {
-      throw new ForbiddenException('Manufacturing Supervisors can only access assets in the MANUFACTURING pipeline.');
-    }
-    if (user.role === UserRole.REPAIR_SUPERVISOR && asset.currentPipeline !== PipelineOperation.REPAIRING) {
-      throw new ForbiddenException('Repair Supervisors can only access assets in the REPAIR pipeline.');
-    }
+
 
     return asset;
   }
@@ -123,12 +126,7 @@ export class AssetsService {
       throw new NotFoundException(`Asset ${assetNumber} not found`);
     }
 
-    if (user.role === UserRole.MANUFACTURING_SUPERVISOR && asset.currentPipeline !== PipelineOperation.MANUFACTURING) {
-      throw new ForbiddenException('Manufacturing Supervisors can only update assets in the MANUFACTURING pipeline.');
-    }
-    if (user.role === UserRole.REPAIR_SUPERVISOR && asset.currentPipeline !== PipelineOperation.REPAIRING) {
-      throw new ForbiddenException('Repair Supervisors can only update assets in the REPAIR pipeline.');
-    }
+
 
     asset.status = dto.status;
     return asset.save();
@@ -140,12 +138,7 @@ export class AssetsService {
       throw new NotFoundException(`Asset ${assetNumber} not found`);
     }
 
-    if (user.role === UserRole.MANUFACTURING_SUPERVISOR && asset.currentPipeline !== PipelineOperation.MANUFACTURING) {
-      throw new ForbiddenException('Manufacturing Supervisors can only delete assets in the MANUFACTURING pipeline.');
-    }
-    if (user.role === UserRole.REPAIR_SUPERVISOR && asset.currentPipeline !== PipelineOperation.REPAIRING) {
-      throw new ForbiddenException('Repair Supervisors can only delete assets in the REPAIR pipeline.');
-    }
+
 
     await this.assetModel.deleteOne({ assetNumber: assetNumber.toUpperCase() }).exec();
     return { deleted: true };

@@ -25,7 +25,7 @@ export interface LocationNode {
   code: string;
   name: string;
   isActive?: boolean;
-  category: 'COMMON' | 'REPAIRING' | 'MANUFACTURING';
+  category: 'COMMON' | 'WAGON_POH' | 'OTHERS';
   locationType: string;
   maxCapacity: number;
   children?: LocationNode[];
@@ -46,13 +46,13 @@ export interface MovementLog {
 // Removed CustomPickerModal
 
 const repairTabs = [
-  { id: 'ALL', label: 'All Repair' },
+  { id: 'ALL', label: 'All Wagon POH' },
   { id: 'READY_TO_DISPATCH', label: '🟡 Ready to Dispatch' },
   { id: 'DISPATCHED', label: '✅ Dispatched' },
 ];
 
 const mfgTabs = [
-  { id: 'ALL', label: 'All MFG' },
+  { id: 'ALL', label: 'All Others' },
   { id: 'READY_TO_DISPATCH', label: '🟡 Ready to Dispatch' },
   { id: 'DISPATCHED', label: '✅ Dispatched' },
 ];
@@ -62,8 +62,8 @@ const CommandCenter = () => {
 
   // Permissions
   const isViewer = user?.role === 'VIEWER';
-  const showRepair = user?.role !== 'MANUFACTURING_SUPERVISOR';
-  const showMfg = user?.role !== 'REPAIR_SUPERVISOR';
+  const showRepair = true;
+  const showMfg = true;
 
   // State
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -81,8 +81,8 @@ const CommandCenter = () => {
     await fetchAssets();
     setRefreshing(false);
   };
-  const [activePipeline, setActivePipeline] = useState<'REPAIRING' | 'MANUFACTURING' | 'LOCATIONS'>(
-    showRepair ? 'REPAIRING' : showMfg ? 'MANUFACTURING' : 'LOCATIONS'
+  const [activePipeline, setActivePipeline] = useState<'WAGON_POH' | 'OTHERS' | 'LOCATIONS'>(
+    showRepair ? 'WAGON_POH' : showMfg ? 'OTHERS' : 'LOCATIONS'
   );
   const [activeStage, setActiveStage] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -399,7 +399,7 @@ const CommandCenter = () => {
     }
   };
 
-  const currentStageTabs = activePipeline === 'REPAIRING' ? repairTabs : mfgTabs;
+  const currentStageTabs = activePipeline === 'WAGON_POH' ? repairTabs : mfgTabs;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -440,18 +440,18 @@ const CommandCenter = () => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollTabsRow}>
           {showRepair && (
             <TouchableOpacity
-              style={[styles.tabButton, activePipeline === 'REPAIRING' && styles.tabButtonActive]}
-              onPress={() => setActivePipeline('REPAIRING')}
+              style={[styles.tabButton, activePipeline === 'WAGON_POH' && styles.tabButtonActive]}
+              onPress={() => setActivePipeline('WAGON_POH')}
             >
-              <Text style={[styles.tabText, activePipeline === 'REPAIRING' && styles.tabTextActive]}>Repair</Text>
+              <Text style={[styles.tabText, activePipeline === 'WAGON_POH' && styles.tabTextActive]}>Wagon POH</Text>
             </TouchableOpacity>
           )}
           {showMfg && (
             <TouchableOpacity
-              style={[styles.tabButton, activePipeline === 'MANUFACTURING' && styles.tabButtonActive]}
-              onPress={() => setActivePipeline('MANUFACTURING')}
+              style={[styles.tabButton, activePipeline === 'OTHERS' && styles.tabButtonActive]}
+              onPress={() => setActivePipeline('OTHERS')}
             >
-              <Text style={[styles.tabText, activePipeline === 'MANUFACTURING' && styles.tabTextActive]}>MFG</Text>
+              <Text style={[styles.tabText, activePipeline === 'OTHERS' && styles.tabTextActive]}>Others</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -540,7 +540,7 @@ const CommandCenter = () => {
                   <View style={styles.statusRow}>
                     <Text style={styles.label}>Status:</Text>
                     <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{asset.status}</Text>
+                      <Text style={styles.badgeText}>{asset.status.replace(/_/g, ' ')}</Text>
                     </View>
                   </View>
                   <View style={styles.remarkRow}>

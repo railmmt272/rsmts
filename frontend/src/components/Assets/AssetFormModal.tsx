@@ -50,7 +50,7 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
   const { user } = useAuth();
 
   // Form Fields
-  const [operation, setOperation] = useState('REPAIRING');
+  const [operation, setOperation] = useState('WAGON_POH');
   const [assetNumber, setAssetNumber] = useState('');
   const [remark, setRemark] = useState('');
   
@@ -97,7 +97,7 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
   };
 
   const resetForm = () => {
-    const defaultOp = user?.role === 'MANUFACTURING_SUPERVISOR' ? 'MANUFACTURING' : 'REPAIRING';
+    const defaultOp = user?.role === 'OPS_MANAGEMENT' ? 'OTHERS' : 'WAGON_POH';
     setOperation(defaultOp);
     setAssetNumber('');
     setRemark('');
@@ -114,9 +114,9 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
   else if (selectedParent) finalCategoryCode = selectedParent;
 
   // Category selections
-  const grandparentOptions = operation === 'MANUFACTURING' 
-    ? categoryHierarchy.filter(c => ['WAGON', 'CRANE'].includes(c.code))
-    : categoryHierarchy;
+  const grandparentOptions = operation === 'OTHERS' 
+    ? categoryHierarchy.filter(c => ['WAGON_MFG', 'LOCO', 'CRANE', 'TOWER_CAR'].includes(c.code))
+    : categoryHierarchy.filter(c => ['WAGON'].includes(c.code));
     
   const parentOptions = grandparentOptions.find(c => c.code === selectedGrandparent)?.children || [];
   const childOptions = parentOptions.find(c => c.code === selectedParent)?.children || [];
@@ -255,8 +255,8 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                   <div className="flex flex-wrap gap-2">
                     {[
                       { value: 'ACTIVE', label: 'Active' },
-                      { value: 'IN_REPAIR', label: 'In Repair' },
-                      { value: 'IN_MANUFACTURING', label: 'In Manufacturing' },
+                      { value: 'IN_WAGON_POH', label: 'In Wagon POH' },
+                      { value: 'IN_OTHERS', label: 'In Others' },
                       { value: 'CONDEMNED', label: 'Condemned' },
                       { value: 'READY_TO_DISPATCH', label: 'Ready to Dispatch' },
                       { value: 'DISPATCHED', label: 'Dispatched' },
@@ -297,9 +297,8 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
                 <div>
                   <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Pipeline</label>
                   <div className="flex gap-3">
-                    {['REPAIRING', 'MANUFACTURING'].map(op => {
-                      if (user?.role === 'MANUFACTURING_SUPERVISOR' && op !== 'MANUFACTURING') return null;
-                      if (user?.role === 'REPAIR_SUPERVISOR' && op !== 'REPAIRING') return null;
+                    {['WAGON_POH', 'OTHERS'].map(op => {
+
                       return (
                         <button
                           key={op}
