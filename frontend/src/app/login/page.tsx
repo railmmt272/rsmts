@@ -81,7 +81,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 relative bg-slate-900 overflow-hidden flex-col justify-between items-center text-white p-12">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <Image src="/loginscreenleftpicture.png" alt="Background" fill priority className="object-cover object-center" />
+          <Image src="/loginscreenleftpicture.png" alt="Indian Railways Jamalpur Workshop Operations Background" fill priority className="object-cover object-center" />
         </div>
         <div className="absolute inset-0 z-10 bg-gradient-to-br from-blue-950/60 via-slate-900/40 to-slate-900/50" />
 
