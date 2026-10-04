@@ -11,6 +11,8 @@ interface ShuntingProgramFormModalProps {
   programToEdit?: any;
 }
 
+const SHOP_OPTIONS = ['WAGON', 'LOCO', 'CRANE', 'MANUFACTURING'];
+
 export default function ShuntingProgramFormModal({
   isOpen,
   onClose,
@@ -18,10 +20,9 @@ export default function ShuntingProgramFormModal({
   programToEdit,
 }: ShuntingProgramFormModalProps) {
   const [initialPosition, setInitialPosition] = useState('');
-  const [assetCategory, setAssetCategory] = useState('');
+  const [shop, setShop] = useState('');
   const [remark, setRemark] = useState('');
   const [locations, setLocations] = useState<any[]>([]);
-  const [assetCategories, setAssetCategories] = useState<any[]>([]);
   const [isInitialPositionModalOpen, setIsInitialPositionModalOpen] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -32,14 +33,13 @@ export default function ShuntingProgramFormModal({
       if (programToEdit) {
         setInitialPosition(programToEdit.initialPosition);
         setRemark(programToEdit.remark);
-        setAssetCategory(programToEdit.assetCategory || '');
+        setShop(programToEdit.shop || '');
       } else {
         setInitialPosition('');
         setRemark('');
-        setAssetCategory('');
+        setShop('');
       }
       fetchLocations();
-      fetchAssetCategories();
     }
   }, [isOpen, programToEdit]);
 
@@ -52,20 +52,9 @@ export default function ShuntingProgramFormModal({
     }
   };
 
-  const fetchAssetCategories = async () => {
-    try {
-      const response = await api.get('/asset-categories');
-      // Assume the API returns { data: [...] } or just [...]
-      const categories = response.data.data || response.data;
-      setAssetCategories(categories.filter((c: any) => c.level === 'GRANDPARENT'));
-    } catch (error) {
-      console.error('Failed to fetch asset categories:', error);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!initialPosition || !remark || !assetCategory) {
+    if (!initialPosition || !remark || !shop) {
       toast.error('Please fill in all required fields.');
       return;
     }
@@ -73,10 +62,10 @@ export default function ShuntingProgramFormModal({
     setSubmitting(true);
     try {
       if (programToEdit) {
-        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, remark, assetCategory });
+        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, remark, shop });
         toast.success('Shunting program updated successfully');
       } else {
-        await api.post('/shunting-programs', { initialPosition, remark, assetCategory });
+        await api.post('/shunting-programs', { initialPosition, remark, shop });
         toast.success('Shunting program added successfully');
       }
       onSuccess();
@@ -111,19 +100,19 @@ export default function ShuntingProgramFormModal({
         <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
           <form id="shunting-form" onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Asset Category Selection */}
+            {/* Shop Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Asset Category</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Shop</label>
               <select
-                value={assetCategory}
-                onChange={(e) => setAssetCategory(e.target.value)}
+                value={shop}
+                onChange={(e) => setShop(e.target.value)}
                 required
                 className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white sm:text-sm"
               >
-                <option value="" disabled>Select Asset Category...</option>
-                {assetCategories.map((cat) => (
-                  <option key={cat.code} value={cat.code}>
-                    {cat.name} ({cat.code})
+                <option value="" disabled>Select Shop...</option>
+                {SHOP_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
                   </option>
                 ))}
               </select>

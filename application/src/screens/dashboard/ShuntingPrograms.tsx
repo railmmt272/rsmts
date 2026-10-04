@@ -12,7 +12,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 interface ShuntingProgram {
   _id: string;
   initialPosition: string;
-  assetCategory: string;
+  shop: string;
   remark: string;
   status: 'PENDING' | 'DONE';
   createdAt: string;
@@ -37,13 +37,14 @@ const ShuntingPrograms = () => {
   
   // Form State
   const [initialPosition, setInitialPosition] = useState('');
-  const [assetCategory, setAssetCategory] = useState('');
+  const [shop, setShop] = useState('');
   const [remark, setRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
-  const [categories, setCategories] = useState<{label: string, value: string}[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [shopPickerVisible, setShopPickerVisible] = useState(false);
+
+  const SHOP_OPTIONS = ['WAGON', 'LOCO', 'CRANE', 'MANUFACTURING'];
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'DONE'>('ALL');
@@ -89,10 +90,9 @@ const ShuntingPrograms = () => {
       if (pageNumber === 1) setLoading(true);
       else setLoadingMore(true);
 
-      const [programsRes, locsRes, catsRes] = await Promise.all([
+      const [programsRes, locsRes] = await Promise.all([
         api.get(`/shunting-programs?page=${pageNumber}&limit=${limit}`),
-        pageNumber === 1 ? api.get('/locations?isActive=true').catch(() => ({ data: [] })) : Promise.resolve({ data: locations }),
-        pageNumber === 1 ? api.get('/asset-categories/hierarchy').catch(() => ({ data: [] })) : Promise.resolve({ data: categories })
+        pageNumber === 1 ? api.get('/locations?isActive=true').catch(() => ({ data: [] })) : Promise.resolve({ data: locations })
       ]);
       
       const responseData = programsRes.data;
@@ -102,10 +102,7 @@ const ShuntingPrograms = () => {
       if (pageNumber === 1) {
         setPrograms(newPrograms);
         if (locsRes.data.length > 0) setLocations(locsRes.data);
-        if (catsRes.data.length > 0) {
-          const grandparents = catsRes.data.map((c: any) => ({ label: c.name, value: c.code }));
-          setCategories(grandparents);
-        }
+        if (locsRes.data.length > 0) setLocations(locsRes.data);
       } else {
         if (!isPaginated) {
           setHasMore(false);
@@ -197,30 +194,30 @@ const ShuntingPrograms = () => {
     if (program) {
       setProgramToEdit(program);
       setInitialPosition(program.initialPosition);
-      setAssetCategory(program.assetCategory);
+      setShop(program.shop);
       setRemark(program.remark);
     } else {
       setProgramToEdit(null);
       setInitialPosition('');
-      setAssetCategory('');
+      setShop('');
       setRemark('');
     }
     setModalVisible(true);
   };
 
   const handleSubmit = async () => {
-    if (!initialPosition.trim() || !assetCategory.trim() || !remark.trim()) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Initial Position, Category and remark are required' });
+    if (!initialPosition.trim() || !shop.trim() || !remark.trim()) {
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Initial Position, Shop and remark are required' });
       return;
     }
     
     setSubmitting(true);
     try {
       if (programToEdit) {
-        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, assetCategory, remark });
+        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, shop, remark });
         Toast.show({ type: 'success', text1: 'Updated', text2: 'Program updated successfully' });
       } else {
-        await api.post('/shunting-programs', { initialPosition, assetCategory, remark, status: 'PENDING' });
+        await api.post('/shunting-programs', { initialPosition, shop, remark, status: 'PENDING' });
         Toast.show({ type: 'success', text1: 'Created', text2: 'Program created successfully' });
       }
       setModalVisible(false);
@@ -367,8 +364,8 @@ const ShuntingPrograms = () => {
               
               <View style={styles.cardBody}>
                 <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-                  <Text style={styles.cardLabel}>Category:</Text>
-                  <Text style={styles.cardValue}>{item.assetCategory}</Text>
+                  <Text style={styles.cardLabel}>Shop:</Text>
+                  <Text style={styles.cardValue}>{item.shop}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', marginBottom: 4 }}>
                   <Text style={styles.cardLabel}>Initial Pos:</Text>
@@ -424,13 +421,13 @@ const ShuntingPrograms = () => {
             </View>
             
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Asset Category</Text>
+              <Text style={styles.inputLabel}>Shop</Text>
               <TouchableOpacity 
                 style={styles.dropdownInput}
-                onPress={() => setCategoryPickerVisible(true)}
+                onPress={() => setShopPickerVisible(true)}
               >
-                <Text style={assetCategory ? styles.inputText : styles.placeholderText}>
-                  {assetCategory ? categories.find(c => c.value === assetCategory)?.label + ` (${assetCategory})` : 'Select Category...'}
+                <Text style={shop ? styles.inputText : styles.placeholderText}>
+                  {shop ? shop : 'Select Shop...'}
                 </Text>
               </TouchableOpacity>
 
@@ -456,9 +453,9 @@ const ShuntingPrograms = () => {
               />
               
               <TouchableOpacity 
-                style={[styles.submitBtn, (!initialPosition.trim() || !assetCategory.trim() || !remark.trim() || submitting) && styles.submitBtnDisabled]} 
+                style={[styles.submitBtn, (!initialPosition.trim() || !shop.trim() || !remark.trim() || submitting) && styles.submitBtnDisabled]} 
                 onPress={handleSubmit}
-                disabled={!initialPosition.trim() || !assetCategory.trim() || !remark.trim() || submitting}
+                disabled={!initialPosition.trim() || !shop.trim() || !remark.trim() || submitting}
               >
                 {submitting ? (
                   <ActivityIndicator color="#fff" />
@@ -481,33 +478,32 @@ const ShuntingPrograms = () => {
         selectedCode={initialPosition}
       />
 
-      {/* Reusable Category Picker Modal */}
-      <Modal visible={categoryPickerVisible} transparent animationType="slide" onRequestClose={() => setCategoryPickerVisible(false)}>
+      {/* Reusable Shop Picker Modal */}
+      <Modal visible={shopPickerVisible} transparent animationType="slide" onRequestClose={() => setShopPickerVisible(false)}>
         <View style={styles.pickerOverlay}>
           <View style={styles.pickerContent}>
             <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Asset Category</Text>
-              <TouchableOpacity onPress={() => setCategoryPickerVisible(false)} style={styles.closeBtn}>
+              <Text style={styles.pickerTitle}>Select Shop</Text>
+              <TouchableOpacity onPress={() => setShopPickerVisible(false)} style={styles.closeBtn}>
                 <X color="#64748b" size={24} />
               </TouchableOpacity>
             </View>
             <FlatList
-              data={categories}
-              keyExtractor={item => item.value}
+              data={SHOP_OPTIONS}
+              keyExtractor={item => item}
               renderItem={({ item }) => (
                 <TouchableOpacity 
-                  style={[styles.pickerItem, assetCategory === item.value && styles.pickerItemSelected]}
+                  style={[styles.pickerItem, shop === item && styles.pickerItemSelected]}
                   onPress={() => {
-                    setAssetCategory(item.value);
-                    setCategoryPickerVisible(false);
+                    setShop(item);
+                    setShopPickerVisible(false);
                   }}
                 >
-                  <Text style={[styles.pickerItemText, assetCategory === item.value && styles.pickerItemTextSelected]}>
-                    {item.label}
+                  <Text style={[styles.pickerItemText, shop === item && styles.pickerItemTextSelected]}>
+                    {item}
                   </Text>
                 </TouchableOpacity>
               )}
-              ListEmptyComponent={<Text style={styles.emptyText}>No categories available</Text>}
             />
           </View>
         </View>

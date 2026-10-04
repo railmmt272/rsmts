@@ -3,13 +3,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ShuntingProgramsService } from './shunting-programs.service.js';
 import { ShuntingProgramsController } from './shunting-programs.controller.js';
 import { ShuntingProgram, ShuntingProgramSchema } from './schemas/shunting-program.schema.js';
-import { AssetCategory, AssetCategorySchema } from '../asset-categories/schemas/asset-category.schema.js';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: ShuntingProgram.name, schema: ShuntingProgramSchema },
-      { name: AssetCategory.name, schema: AssetCategorySchema }
+      { name: ShuntingProgram.name, schema: ShuntingProgramSchema }
     ])
   ],
   controllers: [ShuntingProgramsController],

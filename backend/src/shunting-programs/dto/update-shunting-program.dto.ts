@@ -9,7 +9,8 @@ export class UpdateShuntingProgramDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  assetCategory?: string;
+  @IsEnum(['WAGON', 'LOCO', 'CRANE', 'MANUFACTURING'])
+  shop?: string;
 
   @IsOptional()
   @IsString()

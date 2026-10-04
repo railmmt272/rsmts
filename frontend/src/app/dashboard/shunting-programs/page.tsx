@@ -13,7 +13,7 @@ interface ShuntingProgram {
   _id: string;
   initialPosition: string;
   remark: string;
-  assetCategory: string;
+  shop: string;
   status: 'PENDING' | 'DONE';
   createdAt: string;
   dateMarkedDone?: string;
@@ -216,7 +216,7 @@ export default function ShuntingProgramsPage() {
                   Date
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
-                  Asset
+                  Shop
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">
                   Initial Position
@@ -270,7 +270,7 @@ export default function ShuntingProgramsPage() {
                         {new Date(program.createdAt).toLocaleDateString('en-GB')}
                       </td>
                       <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">{program.assetCategory}</span>
+                        <span className="font-medium text-gray-900">{program.shop}</span>
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-medium text-gray-900">{program.initialPosition}</span>

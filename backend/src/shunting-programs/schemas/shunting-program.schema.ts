@@ -7,8 +7,8 @@ export class ShuntingProgram extends Document {
   @Prop({ type: String, required: true })
   initialPosition: string;
 
-  @Prop({ type: String, required: true })
-  assetCategory: string;
+  @Prop({ type: String, required: true, enum: ['WAGON', 'LOCO', 'CRANE', 'MANUFACTURING'] })
+  shop: string;
 
   @Prop({ type: String, required: true })
   remark: string;

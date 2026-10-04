@@ -7,7 +7,8 @@ export class CreateShuntingProgramDto {
 
   @IsString()
   @IsNotEmpty()
-  assetCategory: string;
+  @IsEnum(['WAGON', 'LOCO', 'CRANE', 'MANUFACTURING'])
+  shop: string;
 
   @IsString()
   @IsNotEmpty()
