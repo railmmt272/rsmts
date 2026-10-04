@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Briefcase, Lock, FileText, User, Eye, EyeOff, LogOut } from 'lucide-react-native';
+import { Mail, Briefcase, Lock, FileText, User, Eye, EyeOff, LogOut, Edit2 } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import Toast from 'react-native-toast-message';
@@ -26,6 +26,8 @@ const Profile = () => {
 
   if (!user) return null;
 
+  const hasChanges = name !== user.name || email !== user.email || remark !== (user.remark || '') || password.length > 0;
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -49,15 +51,21 @@ const Profile = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <View style={styles.headerRight} />
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={styles.headerRight} />
+      </View>
+
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.topGradientArea}>
-            <Text style={styles.headerTitle}>Edit Profile</Text>
-            
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatarCircle}>
-                <User size={56} color="#0284c7" />
-              </View>
+          
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatarCircle}>
+              <User size={56} color="#0066ff" />
+            </View>
+            <View style={styles.editBadge}>
+              <Edit2 size={14} color="#ffffff" />
             </View>
           </View>
 
@@ -137,15 +145,18 @@ const Profile = () => {
             </View>
 
             <View style={styles.bottomContainer}>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-                {isSaving ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save Changes</Text>
-                )}
-              </TouchableOpacity>
+              {hasChanges && (
+                <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              
               <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-                <LogOut size={20} color="#ef4444" style={{ marginRight: 8 }} />
+                <LogOut size={20} color="#ef4444" style={{ marginRight: 8, transform: [{ scaleX: -1 }] }} />
                 <Text style={styles.logoutText}>Logout</Text>
               </TouchableOpacity>
             </View>
@@ -161,40 +172,54 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  headerRight: {
+    width: 40,
+  },
   scrollContent: {
     paddingBottom: 40,
   },
-  topGradientArea: {
-    backgroundColor: '#e0f2fe',
-    alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 32,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    marginBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 24,
-  },
   avatarContainer: {
-    width: 100,
-    height: 100,
+    alignSelf: 'center',
     position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 50,
+    marginBottom: 32,
   },
   avatarCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: '#bae6fd',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#e0f2fe',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#0066ff',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#ffffff',
   },
   formContainer: {
     paddingHorizontal: 24,
@@ -205,7 +230,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1e293b',
+    color: '#64748b',
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -216,19 +241,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     height: 56,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
     borderWidth: 1,
     borderColor: '#f1f5f9',
   },
   readonlyInputContainer: {
     backgroundColor: '#f8fafc',
-    shadowOpacity: 0,
-    elevation: 0,
-    borderColor: '#e2e8f0',
+    borderColor: '#f1f5f9',
   },
   inputIcon: {
     marginRight: 12,
@@ -248,19 +266,16 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     marginTop: 16,
+    alignItems: 'center',
   },
   saveButton: {
     backgroundColor: '#0066ff',
     borderRadius: 28,
     height: 56,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0066ff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   saveButtonText: {
     fontSize: 16,
@@ -269,15 +284,13 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     flexDirection: 'row',
-    backgroundColor: '#fef2f2',
-    borderRadius: 28,
-    height: 56,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
   logoutText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#ef4444',
   }
 });
