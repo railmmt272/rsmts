@@ -8,7 +8,7 @@ import Toast from 'react-native-toast-message';
 
 const Profile = () => {
   const { user, logout, refreshUser } = useAuth();
-  
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +35,7 @@ const Profile = () => {
       if (password) {
         payload.password = password;
       }
-      
+
       await api.patch(`/users/${user._id}`, payload);
       await refreshUser();
       setPassword('');
@@ -59,7 +59,7 @@ const Profile = () => {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
+
           <View style={styles.avatarContainer}>
             <View style={styles.avatarCircle}>
               <User size={56} color="#0066ff" />
@@ -154,9 +154,8 @@ const Profile = () => {
                   )}
                 </TouchableOpacity>
               )}
-              
+
               <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-                <LogOut size={20} color="#ef4444" style={{ marginRight: 8, transform: [{ scaleX: -1 }] }} />
                 <Text style={styles.logoutText}>Logout</Text>
               </TouchableOpacity>
             </View>
@@ -270,7 +269,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#0066ff',
-    borderRadius: 28,
+    borderRadius: 16,
     height: 56,
     width: '100%',
     justifyContent: 'center',
