@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Briefcase, Lock, FileText, CheckCircle2, Edit2, Check, User, LogOut } from 'lucide-react-native';
+import { Mail, Briefcase, Lock, FileText, Edit2, User, Eye, EyeOff } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import Toast from 'react-native-toast-message';
 
 const Profile = () => {
   const { user, logout, refreshUser } = useAuth();
   
-  const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remark, setRemark] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -35,13 +36,12 @@ const Profile = () => {
       
       await api.patch(`/users/${user._id}`, payload);
       await refreshUser();
-      setIsEditing(false);
       setPassword('');
-      Alert.alert('Success', 'Profile updated successfully');
+      Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully' });
     } catch (error: any) {
       console.error(error);
       const msg = error.response?.data?.message || 'Failed to update profile. You might not have permission.';
-      Alert.alert('Error', msg);
+      Toast.show({ type: 'error', text1: 'Error', text2: msg });
     } finally {
       setIsSaving(false);
     }
@@ -49,124 +49,111 @@ const Profile = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/logo_bg_removed.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
+      <View style={styles.topGradientArea}>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatarCircle}>
+            <User size={56} color="#0284c7" />
+          </View>
+          <View style={styles.editBadge}>
+            <Edit2 size={12} color="#ffffff" />
+          </View>
         </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.greeting}>Hi, {user.name}</Text>
-          <Text style={styles.userName}>{user.role}</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.headerEditBtn} 
-          onPress={() => isEditing ? handleSave() : setIsEditing(true)}
-          disabled={isSaving}
-        >
-          {isEditing ? <Check size={20} color="#0f172a" /> : <Edit2 size={20} color="#0f172a" />}
+      </View>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Name</Text>
+            <View style={styles.inputContainer}>
+              <User size={20} color="#64748b" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Name"
+                placeholderTextColor="#94a3b8"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.inputContainer}>
+              <Mail size={20} color="#64748b" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#94a3b8"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputContainer}>
+              <Lock size={20} color="#64748b" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••"
+                secureTextEntry={!showPassword}
+                placeholderTextColor="#94a3b8"
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                {showPassword ? <Eye size={20} color="#94a3b8" /> : <EyeOff size={20} color="#94a3b8" />}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Role</Text>
+            <View style={[styles.inputContainer, styles.readonlyInputContainer]}>
+              <Briefcase size={20} color="#94a3b8" style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, styles.readonlyText]}
+                value={user.role}
+                editable={false}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Remark</Text>
+            <View style={styles.inputContainer}>
+              <FileText size={20} color="#64748b" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={remark}
+                onChangeText={setRemark}
+                placeholder="No remark added"
+                placeholderTextColor="#94a3b8"
+              />
+            </View>
+          </View>
+
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <View style={styles.bottomContainer}>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
+          {isSaving ? (
+            <ActivityIndicator color="#0f172a" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save Changes</Text>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
-      
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.card}>
-          <View style={styles.infoRow}>
-            <User size={20} color="#64748b" />
-            <View style={styles.infoContent}>
-              <Text style={styles.label}>Name</Text>
-              {isEditing ? (
-                <TextInput
-                  style={styles.input}
-                  value={name}
-                  onChangeText={setName}
-                />
-              ) : (
-                <Text style={styles.value}>{user.name}</Text>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Mail size={20} color="#64748b" />
-            <View style={styles.infoContent}>
-              <Text style={styles.label}>Email</Text>
-              {isEditing ? (
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              ) : (
-                <Text style={styles.value}>{user.email}</Text>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Briefcase size={20} color="#64748b" />
-            <View style={styles.infoContent}>
-              <Text style={styles.label}>Role</Text>
-              <View style={styles.badgeRow}>
-                <Text style={styles.value}>{user.role}</Text>
-                {user.isActive && (
-                  <View style={styles.activeBadge}>
-                    <CheckCircle2 size={12} color="#15803d" />
-                    <Text style={styles.activeText}>Active</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-
-          {isEditing && (
-            <View style={styles.infoRow}>
-              <Lock size={20} color="#64748b" />
-              <View style={styles.infoContent}>
-                <Text style={styles.label}>New Password</Text>
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  placeholder="Leave blank to keep current"
-                />
-              </View>
-            </View>
-          )}
-
-          <View style={styles.infoRow}>
-            <FileText size={20} color="#64748b" />
-            <View style={styles.infoContent}>
-              <Text style={styles.label}>Remark</Text>
-              {isEditing ? (
-                <TextInput
-                  style={styles.input}
-                  value={remark}
-                  onChangeText={setRemark}
-                  placeholder="Add a remark"
-                />
-              ) : (
-                <Text style={styles.value}>{user.remark || 'No remark added'}</Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-
-        {!isEditing && (
-          <TouchableOpacity 
-            style={[styles.editButton, { marginTop: 12, backgroundColor: '#fee2e2' }]} 
-            onPress={logout}
-          >
-            <LogOut size={18} color="#dc2626" />
-            <Text style={[styles.editButtonText, { color: '#dc2626' }]}>Logout</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -174,129 +161,136 @@ const Profile = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8fafc',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+  topGradientArea: {
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 24,
   },
-  headerEditBtn: {
-    padding: 8,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-    marginLeft: 12,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 24,
   },
-  logoContainer: {
-    width: 44,
-    height: 44,
+  avatarContainer: {
+    width: 90,
+    height: 90,
+    position: 'relative',
+  },
+  avatarCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#bae6fd',
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    borderWidth: 4,
+    borderColor: '#ffffff',
   },
-  logoImage: {
-    width: 40,
-    height: 40,
-  },
-  userInfo: {
-    alignItems: 'flex-start',
-    flex: 1,
-    paddingLeft: 12,
-  },
-  greeting: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#0f172a',
-  },
-  userName: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0284c7',
-    marginTop: 2,
-    textTransform: 'uppercase',
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#0f172a',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 24,
     paddingBottom: 40,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  activeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 4,
-  },
-  activeText: {
-    color: '#15803d',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    gap: 12,
-  },
-  infoContent: {
-    flex: 1,
+  inputGroup: {
+    marginBottom: 20,
   },
   label: {
-    fontSize: 12,
-    color: '#64748b',
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 8,
+    marginLeft: 4,
   },
-  value: {
-    fontSize: 16,
-    color: '#0f172a',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  readonlyInputContainer: {
+    backgroundColor: '#f8fafc',
+    shadowOpacity: 0,
+    elevation: 0,
+    borderColor: '#e2e8f0',
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 15,
     color: '#0f172a',
-    borderBottomWidth: 1,
-    borderBottomColor: '#cbd5e1',
-    paddingVertical: 2,
+    height: '100%',
   },
-  editButton: {
-    backgroundColor: '#0f172a',
-    flexDirection: 'row',
+  readonlyText: {
+    color: '#64748b',
+  },
+  eyeIcon: {
+    padding: 8,
+    marginRight: -8,
+  },
+  bottomContainer: {
+    padding: 24,
+    backgroundColor: '#f8fafc',
+  },
+  saveButton: {
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
-  editButtonText: {
-    color: '#ffffff',
+  saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#0f172a',
   },
+  logoutButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 40,
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ef4444',
+  }
 });
 
 export default Profile;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, FlatList, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ClipboardList, Plus, Clock, CheckCircle2, Edit2, Trash2, X } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
@@ -7,6 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import LocationPickerModal from '../../components/LocationPickerModal';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface ShuntingProgram {
   _id: string;
@@ -20,6 +21,7 @@ interface ShuntingProgram {
 
 const ShuntingPrograms = () => {
   const { user } = useAuth();
+  const canModify = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN';
   const [programs, setPrograms] = useState<ShuntingProgram[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -51,6 +53,16 @@ const ShuntingPrograms = () => {
   // Expanded Cards
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const lastTapRef = React.useRef<{[key: string]: number}>({});
+
+  // Confirm Modal State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    variant: 'danger' | 'warning' | 'success' | 'info';
+    onConfirm: () => Promise<void>;
+  }>({ visible: false, title: '', message: '', confirmText: '', variant: 'danger', onConfirm: async () => {} });
 
   const handleCardPress = (id: string) => {
     const now = Date.now();
@@ -131,53 +143,50 @@ const ShuntingPrograms = () => {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert(
-      'Delete Program',
-      'Are you sure you want to delete this shunting program?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/shunting-programs/${id}`);
-              Toast.show({ type: 'success', text1: 'Deleted', text2: 'Program deleted successfully' });
-              fetchPrograms(1);
-            } catch (err) {
-              Toast.show({ type: 'error', text1: 'Delete Failed', text2: 'Could not delete program' });
-            }
-          }
+    if (!canModify) {
+      Toast.show({ type: 'error', text1: 'Permission Denied', text2: 'Only Wagon Admin and TPT Rail Admin can delete programs.' });
+      return;
+    }
+    setConfirmConfig({
+      visible: true,
+      title: 'Delete Program',
+      message: 'Are you sure you want to delete this shunting program? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/shunting-programs/${id}`);
+          Toast.show({ type: 'success', text1: 'Deleted', text2: 'Program deleted successfully' });
+          fetchPrograms(1);
+        } catch (err) {
+          Toast.show({ type: 'error', text1: 'Delete Failed', text2: 'Could not delete program' });
         }
-      ]
-    );
+      },
+    });
   };
 
   const toggleStatus = (program: ShuntingProgram) => {
-    if (user?.role === 'VIEWER') {
-      Toast.show({ type: 'error', text1: 'Permission Denied', text2: 'You do not have permission to change status.' });
+    if (!canModify) {
+      Toast.show({ type: 'error', text1: 'Permission Denied', text2: 'Only Wagon Admin and TPT Rail Admin can change status.' });
       return;
     }
     const newStatus = program.status === 'PENDING' ? 'DONE' : 'PENDING';
-    Alert.alert(
-      'Confirm Status Change',
-      `Mark this program as ${newStatus.toLowerCase()}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: `Mark ${newStatus}`,
-          onPress: async () => {
-            try {
-              await api.patch(`/shunting-programs/${program._id}`, { status: newStatus });
-              Toast.show({ type: 'success', text1: 'Status Updated', text2: `Program marked as ${newStatus}` });
-              fetchPrograms(1);
-            } catch (err) {
-              Toast.show({ type: 'error', text1: 'Update Failed', text2: 'Could not update status' });
-            }
-          }
+    setConfirmConfig({
+      visible: true,
+      title: 'Confirm Status Change',
+      message: `Are you sure you want to mark this program as ${newStatus.toLowerCase()}?`,
+      confirmText: `Mark ${newStatus}`,
+      variant: newStatus === 'DONE' ? 'success' : 'warning',
+      onConfirm: async () => {
+        try {
+          await api.patch(`/shunting-programs/${program._id}`, { status: newStatus });
+          Toast.show({ type: 'success', text1: 'Status Updated', text2: `Program marked as ${newStatus}` });
+          fetchPrograms(1);
+        } catch (err) {
+          Toast.show({ type: 'error', text1: 'Update Failed', text2: 'Could not update status' });
         }
-      ]
-    );
+      },
+    });
   };
 
   const openModal = (program?: ShuntingProgram) => {
@@ -386,7 +395,7 @@ const ShuntingPrograms = () => {
                 <TouchableOpacity style={styles.iconBtn} onPress={() => openModal(item)}>
                   <Edit2 size={20} color="#0284c7" />
                 </TouchableOpacity>
-                {user?.role !== 'VIEWER' && (
+                {canModify && (
                   <TouchableOpacity style={styles.iconBtn} onPress={() => handleDelete(item._id)}>
                     <Trash2 size={20} color="#dc2626" />
                   </TouchableOpacity>
@@ -503,6 +512,17 @@ const ShuntingPrograms = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Premium Confirmation Modal */}
+      <ConfirmModal
+        visible={confirmConfig.visible}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, visible: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+      />
 
     </SafeAreaView>
   );

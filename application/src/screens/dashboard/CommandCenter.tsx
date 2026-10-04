@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, SlidersHorizontal, CheckCircle2, Circle, X, ChevronDown, Clock } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import LocationsTopologyView from '../../components/LocationsTopologyView';
 import LocationPickerModal from '../../components/LocationPickerModal';
+import ConfirmModal from '../../components/ConfirmModal';
 
 // Shared types
 export interface Asset {
@@ -62,7 +63,7 @@ const CommandCenter = () => {
 
   // Permissions
   const isViewer = user?.role === 'VIEWER';
-  const canModifyStatusOrDelete = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN';
+  const canModifyStatusOrDelete = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN' || user?.role === 'MANUFACTURING_ADMIN' || user?.role === 'CRANE_ADMIN' || user?.role === 'LOCO_ADMIN';
   const showRepair = true;
   const showMfg = true;
 
@@ -109,6 +110,16 @@ const CommandCenter = () => {
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   const lastTapRef = React.useRef<{ [key: string]: number }>({});
+
+  // Confirm Modal State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    variant: 'danger' | 'warning' | 'success' | 'info';
+    onConfirm: () => Promise<void>;
+  }>({ visible: false, title: '', message: '', confirmText: '', variant: 'danger', onConfirm: async () => {} });
 
   const handleCardPress = (asset: Asset) => {
     const now = Date.now();
@@ -271,36 +282,39 @@ const CommandCenter = () => {
   };
 
   const handleDelete = (asset: Asset) => {
-    if (!checkPermission()) return;
+    if (!canModifyStatusOrDelete) {
+      Toast.show({
+        type: 'error',
+        text1: 'Permission Denied',
+        text2: 'Only Wagon Admin and TPT Rail Admin can delete assets.',
+      });
+      return;
+    }
 
-    Alert.alert(
-      'Delete Asset',
-      `Are you sure you want to delete asset ${asset.assetNumber}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/assets/${asset.assetNumber}`);
-              Toast.show({
-                type: 'success',
-                text1: 'Deleted',
-                text2: `Asset ${asset.assetNumber} deleted successfully`,
-              });
-              fetchAssets();
-            } catch (err: any) {
-              Toast.show({
-                type: 'error',
-                text1: 'Delete Failed',
-                text2: err.response?.data?.message || err.message || 'Failed to delete asset',
-              });
-            }
-          }
+    setConfirmConfig({
+      visible: true,
+      title: 'Delete Asset',
+      message: `Are you sure you want to delete asset ${asset.assetNumber}? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/assets/${asset.assetNumber}`);
+          Toast.show({
+            type: 'success',
+            text1: 'Deleted',
+            text2: `Asset ${asset.assetNumber} deleted successfully`,
+          });
+          fetchAssets();
+        } catch (err: any) {
+          Toast.show({
+            type: 'error',
+            text1: 'Delete Failed',
+            text2: err.response?.data?.message || err.message || 'Failed to delete asset',
+          });
         }
-      ]
-    );
+      },
+    });
   };
 
   const handleDispatch = async (asset: Asset) => {
@@ -316,21 +330,30 @@ const CommandCenter = () => {
     const nextStatus = asset.status === 'READY_TO_DISPATCH' ? 'DISPATCHED' : 'READY_TO_DISPATCH';
     const label = nextStatus === 'DISPATCHED' ? 'dispatched' : 'marked as Ready to Dispatch';
 
-    try {
-      await api.patch(`/assets/${asset.assetNumber}/status`, { status: nextStatus });
-      Toast.show({
-        type: 'success',
-        text1: 'Status Updated',
-        text2: `Asset ${asset.assetNumber} ${label}`,
-      });
-      fetchAssets();
-    } catch (err: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Update Failed',
-        text2: err.response?.data?.message || err.message || 'Failed to update dispatch status',
-      });
-    }
+    setConfirmConfig({
+      visible: true,
+      title: 'Confirm Status Change',
+      message: `Are you sure you want to mark asset ${asset.assetNumber} as ${label}?`,
+      confirmText: nextStatus === 'DISPATCHED' ? 'Mark Dispatched' : 'Mark Ready',
+      variant: nextStatus === 'DISPATCHED' ? 'success' : 'warning',
+      onConfirm: async () => {
+        try {
+          await api.patch(`/assets/${asset.assetNumber}/status`, { status: nextStatus });
+          Toast.show({
+            type: 'success',
+            text1: 'Status Updated',
+            text2: `Asset ${asset.assetNumber} ${label}`,
+          });
+          fetchAssets();
+        } catch (err: any) {
+          Toast.show({
+            type: 'error',
+            text1: 'Update Failed',
+            text2: err.response?.data?.message || err.message || 'Failed to update dispatch status',
+          });
+        }
+      },
+    });
   };
 
   const openRouteModal = async (asset: Asset) => {
@@ -701,6 +724,17 @@ const CommandCenter = () => {
         onSelect={pickerConfig.onSelect}
         allowAll={pickerConfig.allowAll}
         onClose={() => setPickerConfig(prev => ({ ...prev, visible: false }))}
+      />
+
+      {/* Premium Confirmation Modal */}
+      <ConfirmModal
+        visible={confirmConfig.visible}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, visible: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
       />
     </SafeAreaView>
   );
