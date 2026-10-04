@@ -11,19 +11,19 @@ export class SystemController {
   constructor(@Inject(SystemService) private readonly systemService: SystemService) { }
 
   @Get('health')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   getHealthStatus() {
     return this.systemService.getHealthStatus();
   }
 
   @Get('audit-logs')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   getAuditLogs(@Query('limit') limit?: number) {
     return this.systemService.getAuditLogs(limit ? Number(limit) : 100);
   }
 
   @Delete('audit-logs')
-  @Roles(UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.WAGON_ADMIN)
   clearAuditLogs() {
     return this.systemService.clearAuditLogs();
   }

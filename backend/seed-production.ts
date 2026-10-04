@@ -32,7 +32,7 @@ async function bootstrap() {
       name: 'System Admin',
       email: 'admin@gmail.com',
       password: 'password@123',
-      role: UserRole.SYSTEM_ADMIN,
+      role: UserRole.WAGON_ADMIN,
       isActive: true,
     });
     console.log(`✅ Created admin user: ${admin.email}`);

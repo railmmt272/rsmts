@@ -9,31 +9,31 @@ import { UserRole } from './schemas/user.schema.js';
 export class UsersController {
   constructor(@Inject(UsersService) private readonly usersService: UsersService) {}
 
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.VIEWER, UserRole.OPS_MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN, UserRole.VIEWER, UserRole.MANUFACTURING_ADMIN, UserRole.CRANE_ADMIN, UserRole.LOCO_ADMIN)
   @Get()
   findAll() {
     return this.usersService.findAll();
   }
 
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.VIEWER, UserRole.OPS_MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN, UserRole.VIEWER, UserRole.MANUFACTURING_ADMIN, UserRole.CRANE_ADMIN, UserRole.LOCO_ADMIN)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
 
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
   }
 
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);

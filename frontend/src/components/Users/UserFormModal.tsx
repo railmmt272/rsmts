@@ -174,9 +174,11 @@ export default function UserFormModal({ isOpen, onClose, onSuccess, userToEdit }
               onChange={handleChange}
               className="block w-full border border-gray-300/80 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white/70 transition-colors sm:text-sm"
             >
-              <option value="SYSTEM_ADMIN">System Admin</option>
-              <option value="MANAGEMENT">Management</option>
-              <option value="OPS_MANAGEMENT">Ops Management</option>
+              <option value="WAGON_ADMIN">Wagon Admin</option>
+              <option value="TPT_RAIL_ADMIN">TPT Rail Admin</option>
+              <option value="MANUFACTURING_ADMIN">Manufacturing Admin</option>
+              <option value="CRANE_ADMIN">Crane Admin</option>
+              <option value="LOCO_ADMIN">Loco Admin</option>
               <option value="VIEWER">Viewer</option>
             </select>
           </div>

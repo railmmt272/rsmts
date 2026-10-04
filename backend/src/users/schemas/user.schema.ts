@@ -5,10 +5,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 export type UserDocument = mongoose.HydratedDocument<User>;
 
 export enum UserRole {
-  SYSTEM_ADMIN = 'SYSTEM_ADMIN',
-  MANAGEMENT = 'MANAGEMENT',
+  WAGON_ADMIN = 'WAGON_ADMIN',
+  TPT_RAIL_ADMIN = 'TPT_RAIL_ADMIN',
+  MANUFACTURING_ADMIN = 'MANUFACTURING_ADMIN',
+  CRANE_ADMIN = 'CRANE_ADMIN',
+  LOCO_ADMIN = 'LOCO_ADMIN',
   VIEWER = 'VIEWER',
-  OPS_MANAGEMENT = 'OPS_MANAGEMENT',
 }
 
 @Schema({

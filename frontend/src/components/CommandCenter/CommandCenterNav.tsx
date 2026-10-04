@@ -17,7 +17,7 @@ export default function CommandCenterNav({ searchTerm = "", onSearchChange }: Co
   const router = useRouter();
   const { user } = useAuth();
   const isViewer = user?.role === "VIEWER";
-  const isManagementOrAdmin = user?.role === "SYSTEM_ADMIN" || user?.role === "MANAGEMENT";
+  const isManagementOrAdmin = user?.role === "WAGON_ADMIN" || user?.role === "TPT_RAIL_ADMIN";
   
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
 

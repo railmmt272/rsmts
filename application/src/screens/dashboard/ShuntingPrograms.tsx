@@ -10,10 +10,12 @@ import LocationPickerModal from '../../components/LocationPickerModal';
 
 interface ShuntingProgram {
   _id: string;
-  shop: string;
+  initialPosition: string;
+  assetCategory: string;
   remark: string;
   status: 'PENDING' | 'DONE';
   createdAt: string;
+  dateMarkedDone?: string;
 }
 
 const ShuntingPrograms = () => {
@@ -32,11 +34,14 @@ const ShuntingPrograms = () => {
   const [programToEdit, setProgramToEdit] = useState<ShuntingProgram | null>(null);
   
   // Form State
-  const [shop, setShop] = useState('');
+  const [initialPosition, setInitialPosition] = useState('');
+  const [assetCategory, setAssetCategory] = useState('');
   const [remark, setRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
+  const [categories, setCategories] = useState<{label: string, value: string}[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'DONE'>('ALL');
@@ -72,9 +77,10 @@ const ShuntingPrograms = () => {
       if (pageNumber === 1) setLoading(true);
       else setLoadingMore(true);
 
-      const [programsRes, locsRes] = await Promise.all([
+      const [programsRes, locsRes, catsRes] = await Promise.all([
         api.get(`/shunting-programs?page=${pageNumber}&limit=${limit}`),
-        pageNumber === 1 ? api.get('/locations?isActive=true').catch(() => ({ data: [] })) : Promise.resolve({ data: locations })
+        pageNumber === 1 ? api.get('/locations?isActive=true').catch(() => ({ data: [] })) : Promise.resolve({ data: locations }),
+        pageNumber === 1 ? api.get('/asset-categories/hierarchy').catch(() => ({ data: [] })) : Promise.resolve({ data: categories })
       ]);
       
       const responseData = programsRes.data;
@@ -84,6 +90,10 @@ const ShuntingPrograms = () => {
       if (pageNumber === 1) {
         setPrograms(newPrograms);
         if (locsRes.data.length > 0) setLocations(locsRes.data);
+        if (catsRes.data.length > 0) {
+          const grandparents = catsRes.data.map((c: any) => ({ label: c.name, value: c.code }));
+          setCategories(grandparents);
+        }
       } else {
         if (!isPaginated) {
           setHasMore(false);
@@ -144,6 +154,10 @@ const ShuntingPrograms = () => {
   };
 
   const toggleStatus = (program: ShuntingProgram) => {
+    if (user?.role === 'VIEWER') {
+      Toast.show({ type: 'error', text1: 'Permission Denied', text2: 'You do not have permission to change status.' });
+      return;
+    }
     const newStatus = program.status === 'PENDING' ? 'DONE' : 'PENDING';
     Alert.alert(
       'Confirm Status Change',
@@ -167,31 +181,37 @@ const ShuntingPrograms = () => {
   };
 
   const openModal = (program?: ShuntingProgram) => {
+    if (user?.role === 'VIEWER') {
+      Toast.show({ type: 'error', text1: 'Permission Denied', text2: 'You do not have permission to modify programs.' });
+      return;
+    }
     if (program) {
       setProgramToEdit(program);
-      setShop(program.shop);
+      setInitialPosition(program.initialPosition);
+      setAssetCategory(program.assetCategory);
       setRemark(program.remark);
     } else {
       setProgramToEdit(null);
-      setShop('');
+      setInitialPosition('');
+      setAssetCategory('');
       setRemark('');
     }
     setModalVisible(true);
   };
 
   const handleSubmit = async () => {
-    if (!shop.trim() || !remark.trim()) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Shop and remark are required' });
+    if (!initialPosition.trim() || !assetCategory.trim() || !remark.trim()) {
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Initial Position, Category and remark are required' });
       return;
     }
     
     setSubmitting(true);
     try {
       if (programToEdit) {
-        await api.patch(`/shunting-programs/${programToEdit._id}`, { shop, remark });
+        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, assetCategory, remark });
         Toast.show({ type: 'success', text1: 'Updated', text2: 'Program updated successfully' });
       } else {
-        await api.post('/shunting-programs', { shop, remark, status: 'PENDING' });
+        await api.post('/shunting-programs', { initialPosition, assetCategory, remark, status: 'PENDING' });
         Toast.show({ type: 'success', text1: 'Created', text2: 'Program created successfully' });
       }
       setModalVisible(false);
@@ -232,8 +252,6 @@ const ShuntingPrograms = () => {
     });
     return result;
   }, [programs, statusFilter, dateRange]);
-
-  const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.role === 'ADMIN';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -339,20 +357,36 @@ const ShuntingPrograms = () => {
               </View>
               
               <View style={styles.cardBody}>
-                <Text style={styles.shopName}>{item.shop}</Text>
-                <Text 
-                  style={styles.remarkText}
-                  numberOfLines={expandedCards.has(item._id) ? undefined : 2}
-                >
-                  {item.remark}
-                </Text>
+                <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  <Text style={styles.cardLabel}>Category:</Text>
+                  <Text style={styles.cardValue}>{item.assetCategory}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  <Text style={styles.cardLabel}>Initial Pos:</Text>
+                  <Text style={styles.cardValue}>{item.initialPosition}</Text>
+                </View>
+                {item.status === 'DONE' && item.dateMarkedDone && (
+                  <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                    <Text style={styles.cardLabel}>Done Date:</Text>
+                    <Text style={styles.cardValue}>{new Date(item.dateMarkedDone).toLocaleDateString()}</Text>
+                  </View>
+                )}
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.cardLabel}>Remark:</Text>
+                  <Text 
+                    style={styles.remarkText}
+                    numberOfLines={expandedCards.has(item._id) ? undefined : 2}
+                  >
+                    {item.remark}
+                  </Text>
+                </View>
               </View>
 
               <View style={styles.cardActions}>
                 <TouchableOpacity style={styles.iconBtn} onPress={() => openModal(item)}>
                   <Edit2 size={20} color="#0284c7" />
                 </TouchableOpacity>
-                {isAdmin && (
+                {user?.role !== 'VIEWER' && (
                   <TouchableOpacity style={styles.iconBtn} onPress={() => handleDelete(item._id)}>
                     <Trash2 size={20} color="#dc2626" />
                   </TouchableOpacity>
@@ -381,13 +415,23 @@ const ShuntingPrograms = () => {
             </View>
             
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Shop Location</Text>
+              <Text style={styles.inputLabel}>Asset Category</Text>
+              <TouchableOpacity 
+                style={styles.dropdownInput}
+                onPress={() => setCategoryPickerVisible(true)}
+              >
+                <Text style={assetCategory ? styles.inputText : styles.placeholderText}>
+                  {assetCategory ? categories.find(c => c.value === assetCategory)?.label + ` (${assetCategory})` : 'Select Category...'}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.inputLabel}>Initial Position</Text>
               <TouchableOpacity 
                 style={styles.dropdownInput}
                 onPress={() => setPickerVisible(true)}
               >
-                <Text style={shop ? styles.inputText : styles.placeholderText}>
-                  {shop ? `${locations.find(l => l.code === shop)?.name || shop} (${shop})` : 'Select Shop Location...'}
+                <Text style={initialPosition ? styles.inputText : styles.placeholderText}>
+                  {initialPosition ? `${locations.find(l => l.code === initialPosition)?.name || initialPosition} (${initialPosition})` : 'Select Initial Position...'}
                 </Text>
               </TouchableOpacity>
 
@@ -403,9 +447,9 @@ const ShuntingPrograms = () => {
               />
               
               <TouchableOpacity 
-                style={[styles.submitBtn, (!shop.trim() || !remark.trim() || submitting) && styles.submitBtnDisabled]} 
+                style={[styles.submitBtn, (!initialPosition.trim() || !assetCategory.trim() || !remark.trim() || submitting) && styles.submitBtnDisabled]} 
                 onPress={handleSubmit}
-                disabled={!shop.trim() || !remark.trim() || submitting}
+                disabled={!initialPosition.trim() || !assetCategory.trim() || !remark.trim() || submitting}
               >
                 {submitting ? (
                   <ActivityIndicator color="#fff" />
@@ -422,11 +466,43 @@ const ShuntingPrograms = () => {
       <LocationPickerModal
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
-        title="Select Shop"
+        title="Select Initial Position"
         locations={locations}
-        onSelect={setShop}
-        selectedCode={shop}
+        onSelect={setInitialPosition}
+        selectedCode={initialPosition}
       />
+
+      {/* Reusable Category Picker Modal */}
+      <Modal visible={categoryPickerVisible} transparent animationType="slide" onRequestClose={() => setCategoryPickerVisible(false)}>
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerContent}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Asset Category</Text>
+              <TouchableOpacity onPress={() => setCategoryPickerVisible(false)} style={styles.closeBtn}>
+                <X color="#64748b" size={24} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={categories}
+              keyExtractor={item => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={[styles.pickerItem, assetCategory === item.value && styles.pickerItemSelected]}
+                  onPress={() => {
+                    setAssetCategory(item.value);
+                    setCategoryPickerVisible(false);
+                  }}
+                >
+                  <Text style={[styles.pickerItemText, assetCategory === item.value && styles.pickerItemTextSelected]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={<Text style={styles.emptyText}>No categories available</Text>}
+            />
+          </View>
+        </View>
+      </Modal>
 
     </SafeAreaView>
   );
@@ -591,16 +667,22 @@ const styles = StyleSheet.create({
   cardBody: {
     marginBottom: 16,
   },
-  shopName: {
+  cardLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#64748b',
-    marginBottom: 6,
+    width: 90,
+  },
+  cardValue: {
+    fontSize: 12,
+    color: '#0f172a',
+    flex: 1,
   },
   remarkText: {
     fontSize: 14,
     color: '#475569',
     lineHeight: 20,
+    marginTop: 2,
   },
   cardActions: {
     flexDirection: 'row',

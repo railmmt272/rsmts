@@ -93,7 +93,7 @@ export default function SettingsPage() {
     }
   };
 
-  const isAuthorized = user?.role === 'SYSTEM_ADMIN' || user?.role === 'MANAGEMENT';
+  const isAuthorized = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN';
 
   if (!isAuthorized) {
     return (

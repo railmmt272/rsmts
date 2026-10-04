@@ -9,7 +9,7 @@ export class AssetCategoriesController {
   constructor(@Inject(AssetCategoriesService) private readonly assetCategoriesService: AssetCategoriesService) {}
 
   @Post()
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   create(@Body() createAssetCategoryDto: CreateAssetCategoryDto) {
     return this.assetCategoriesService.create(createAssetCategoryDto);
   }
@@ -30,14 +30,14 @@ export class AssetCategoriesController {
   }
 
   @Patch(':code')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   update(@Param('code') code: string, @Body() updateAssetCategoryDto: UpdateAssetCategoryDto) {
     return this.assetCategoriesService.update(code, updateAssetCategoryDto);
   }
 
   @Delete(':code')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   remove(@Param('code') code: string) {
     return this.assetCategoriesService.remove(code);
   }

@@ -27,7 +27,7 @@ function UsersPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const isManagementOrAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'MANAGEMENT';
+  const isManagementOrAdmin = currentUser?.role === 'WAGON_ADMIN' || currentUser?.role === 'TPT_RAIL_ADMIN';
 
   useEffect(() => {
     if (searchParams.get('add') === 'true' && isManagementOrAdmin) {

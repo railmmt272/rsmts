@@ -35,7 +35,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
   
-  const isManagementOrAdmin = user?.role === 'SYSTEM_ADMIN' || user?.role === 'MANAGEMENT';
+  const isManagementOrAdmin = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN';
 
   const isRouteActive = (href: string) => {
     if (href === '/dashboard/command-center') {

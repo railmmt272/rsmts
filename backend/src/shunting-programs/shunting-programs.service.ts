@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ShuntingProgram } from './schemas/shunting-program.schema.js';
+import { AssetCategory } from '../asset-categories/schemas/asset-category.schema.js';
 import { CreateShuntingProgramDto } from './dto/create-shunting-program.dto.js';
 import { UpdateShuntingProgramDto } from './dto/update-shunting-program.dto.js';
 
@@ -9,9 +10,21 @@ import { UpdateShuntingProgramDto } from './dto/update-shunting-program.dto.js';
 export class ShuntingProgramsService {
   constructor(
     @InjectModel(ShuntingProgram.name) private shuntingProgramModel: Model<ShuntingProgram>,
+    @InjectModel(AssetCategory.name) private assetCategoryModel: Model<AssetCategory>,
   ) {}
 
+  private async validateAssetCategory(categoryCode: string) {
+    const category = await this.assetCategoryModel.findOne({ code: categoryCode }).exec();
+    if (!category) {
+      throw new BadRequestException(`Asset category '${categoryCode}' does not exist.`);
+    }
+    if (category.level !== 'GRANDPARENT') {
+      throw new BadRequestException(`Asset category must be of level GRANDPARENT, but '${categoryCode}' is '${category.level}'.`);
+    }
+  }
+
   async create(createShuntingProgramDto: CreateShuntingProgramDto, userId: string): Promise<ShuntingProgram> {
+    await this.validateAssetCategory(createShuntingProgramDto.assetCategory);
     const newProgram = new this.shuntingProgramModel({
       ...createShuntingProgramDto,
       createdBy: userId,
@@ -41,8 +54,18 @@ export class ShuntingProgramsService {
   }
 
   async update(id: string, updateShuntingProgramDto: UpdateShuntingProgramDto): Promise<ShuntingProgram> {
+    if (updateShuntingProgramDto.assetCategory) {
+      await this.validateAssetCategory(updateShuntingProgramDto.assetCategory);
+    }
+    const updateData: any = { ...updateShuntingProgramDto };
+    if (updateData.status === 'DONE') {
+      updateData.dateMarkedDone = new Date();
+    } else if (updateData.status === 'PENDING') {
+      updateData.dateMarkedDone = null;
+    }
+
     const existingProgram = await this.shuntingProgramModel
-      .findByIdAndUpdate(id, updateShuntingProgramDto, { new: true })
+      .findByIdAndUpdate(id, updateData, { new: true })
       .exec();
 
     if (!existingProgram) {

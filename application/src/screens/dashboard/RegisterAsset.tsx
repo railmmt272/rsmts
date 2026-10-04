@@ -81,7 +81,7 @@ export default function RegisterAsset() {
   const [remark, setRemark] = useState('');
 
   useEffect(() => {
-    if (user?.role === 'OPS_MANAGEMENT') {
+    if (user?.role && ['MANUFACTURING_ADMIN', 'CRANE_ADMIN', 'LOCO_ADMIN'].includes(user.role)) {
       setOperation('OTHERS');
     } else {
       setOperation('WAGON_POH');

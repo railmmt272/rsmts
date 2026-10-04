@@ -11,10 +11,12 @@ import { Trash2, Edit2 } from 'lucide-react';
 
 interface ShuntingProgram {
   _id: string;
-  shop: string;
+  initialPosition: string;
   remark: string;
+  assetCategory: string;
   status: 'PENDING' | 'DONE';
   createdAt: string;
+  dateMarkedDone?: string;
 }
 
 export default function ShuntingProgramsPage() {
@@ -25,6 +27,9 @@ export default function ShuntingProgramsPage() {
   const toast = useToast();
   const { user } = useAuth();
   
+  const isViewer = user?.role === 'VIEWER';
+  const canManageStatus = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN';
+
   const [confirmStatusConfig, setConfirmStatusConfig] = useState<{ isOpen: boolean; id: string; newStatus: string } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -138,6 +143,10 @@ export default function ShuntingProgramsPage() {
         </div>
         <button
           onClick={() => {
+            if (isViewer) {
+              toast.error('You do not have permission to perform this action.');
+              return;
+            }
             setProgramToEdit(null);
             setIsModalOpen(true);
           }}
@@ -206,11 +215,17 @@ export default function ShuntingProgramsPage() {
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
                   Date
                 </th>
+                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+                  Asset
+                </th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">
-                  Shop
+                  Initial Position
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Shunting Program
+                </th>
+                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+                  Date Marked Done
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32 text-center">
                   Status
@@ -255,7 +270,10 @@ export default function ShuntingProgramsPage() {
                         {new Date(program.createdAt).toLocaleDateString('en-GB')}
                       </td>
                       <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">{program.shop}</span>
+                        <span className="font-medium text-gray-900">{program.assetCategory}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-medium text-gray-900">{program.initialPosition}</span>
                       </td>
                       <td 
                         className="py-4 px-6 text-gray-700 cursor-pointer"
@@ -271,9 +289,18 @@ export default function ShuntingProgramsPage() {
                           </button>
                         )}
                       </td>
+                      <td className="py-4 px-6 text-sm text-gray-500">
+                        {program.dateMarkedDone ? new Date(program.dateMarkedDone).toLocaleDateString('en-GB') : '-'}
+                      </td>
                       <td className="py-4 px-6 text-center">
                         <button
-                          onClick={() => toggleStatus(program._id, program.status)}
+                          onClick={() => {
+                            if (!canManageStatus) {
+                              toast.error('You do not have permission to perform this action.');
+                              return;
+                            }
+                            toggleStatus(program._id, program.status);
+                          }}
                           className="px-4 py-1.5 rounded-md text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 inline-flex items-center gap-2"
                         >
                           {program.status === 'DONE' ? (
@@ -293,6 +320,10 @@ export default function ShuntingProgramsPage() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => {
+                              if (isViewer) {
+                                toast.error('You do not have permission to perform this action.');
+                                return;
+                              }
                               setProgramToEdit(program);
                               setIsModalOpen(true);
                             }}
@@ -301,7 +332,7 @@ export default function ShuntingProgramsPage() {
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
-                          {(user?.role === 'SYSTEM_ADMIN' || user?.role === 'ADMIN') && (
+                          {canManageStatus && (
                             <button
                               onClick={() => setConfirmDeleteId(program._id)}
                               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"

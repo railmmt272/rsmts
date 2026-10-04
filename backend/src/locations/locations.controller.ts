@@ -10,7 +10,7 @@ export class LocationsController {
   constructor(@Inject(LocationsService) private readonly locationsService: LocationsService) {}
 
   @Post()
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   create(@Body() createLocationDto: CreateLocationDto) {
     return this.locationsService.create(createLocationDto);
   }
@@ -26,13 +26,13 @@ export class LocationsController {
   }
 
   @Patch(':code')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   update(@Param('code') code: string, @Body() updateLocationDto: UpdateLocationDto) {
     return this.locationsService.update(code, updateLocationDto);
   }
 
   @Delete(':code')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN)
   remove(@Param('code') code: string) {
     return this.locationsService.remove(code);
   }

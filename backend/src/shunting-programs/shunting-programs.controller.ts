@@ -15,7 +15,7 @@ export class ShuntingProgramsController {
   constructor(private readonly shuntingProgramsService: ShuntingProgramsService) {}
 
   @Post()
-  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.MANUFACTURING_ADMIN, UserRole.CRANE_ADMIN, UserRole.LOCO_ADMIN, UserRole.TPT_RAIL_ADMIN, UserRole.WAGON_ADMIN)
   create(@Body() createShuntingProgramDto: CreateShuntingProgramDto, @CurrentUser() user: CurrentUserPayload) {
     return this.shuntingProgramsService.create(createShuntingProgramDto, user._id);
   }
@@ -34,13 +34,13 @@ export class ShuntingProgramsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.MANUFACTURING_ADMIN, UserRole.CRANE_ADMIN, UserRole.LOCO_ADMIN, UserRole.TPT_RAIL_ADMIN, UserRole.WAGON_ADMIN)
   update(@Param('id') id: string, @Body() updateShuntingProgramDto: UpdateShuntingProgramDto) {
     return this.shuntingProgramsService.update(id, updateShuntingProgramDto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.OPS_MANAGEMENT, UserRole.MANAGEMENT, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.MANUFACTURING_ADMIN, UserRole.CRANE_ADMIN, UserRole.LOCO_ADMIN, UserRole.TPT_RAIL_ADMIN, UserRole.WAGON_ADMIN)
   remove(@Param('id') id: string) {
     return this.shuntingProgramsService.remove(id);
   }

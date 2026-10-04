@@ -62,6 +62,7 @@ const CommandCenter = () => {
 
   // Permissions
   const isViewer = user?.role === 'VIEWER';
+  const canModifyStatusOrDelete = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN';
   const showRepair = true;
   const showMfg = true;
 
@@ -303,7 +304,14 @@ const CommandCenter = () => {
   };
 
   const handleDispatch = async (asset: Asset) => {
-    if (!checkPermission()) return;
+    if (!canModifyStatusOrDelete) {
+      Toast.show({
+        type: 'error',
+        text1: 'Permission Denied',
+        text2: 'Only Wagon Admin and TPT Rail Admin can mark assets as dispatched.',
+      });
+      return;
+    }
 
     const nextStatus = asset.status === 'READY_TO_DISPATCH' ? 'DISPATCHED' : 'READY_TO_DISPATCH';
     const label = nextStatus === 'DISPATCHED' ? 'dispatched' : 'marked as Ready to Dispatch';
@@ -557,9 +565,11 @@ const CommandCenter = () => {
                     <TouchableOpacity style={[styles.actionBtn, styles.btnGray]} onPress={() => openRouteModal(asset)}>
                       <Text style={styles.btnTextGray}>Route / Reroute</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionBtn, styles.btnRed]} onPress={() => handleDelete(asset)}>
-                      <Text style={styles.btnTextRed}>Delete</Text>
-                    </TouchableOpacity>
+                    {canModifyStatusOrDelete && (
+                      <TouchableOpacity style={[styles.actionBtn, styles.btnRed]} onPress={() => handleDelete(asset)}>
+                        <Text style={styles.btnTextRed}>Delete</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))

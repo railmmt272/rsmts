@@ -4,7 +4,12 @@ export class UpdateShuntingProgramDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  shop?: string;
+  initialPosition?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  assetCategory?: string;
 
   @IsOptional()
   @IsString()

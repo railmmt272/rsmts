@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 export interface Asset {
   _id: string;
@@ -32,7 +33,9 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 export default function AssetCard({ asset, onViewDetails, onRoute, onDelete, onDispatch }: AssetCardProps) {
   const { user } = useAuth();
+  const toast = useToast();
   const isViewer = user?.role === 'VIEWER';
+  const canModifyStatusOrDelete = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN';
 
   const statusInfo = statusConfig[asset.status] ?? { label: asset.status, className: 'bg-gray-100 text-gray-700 border-gray-300' };
 
@@ -88,13 +91,15 @@ export default function AssetCard({ asset, onViewDetails, onRoute, onDelete, onD
 
       {/* Right Section */}
       <div className="flex flex-col items-end justify-center md:pl-4 gap-2">
-        {!isViewer && (
-          <>
-            {/* Dispatch action button */}
+        {/* Dispatch action button */}
             {onDispatch && !isDispatched && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!canModifyStatusOrDelete) {
+                    toast.error('You do not have permission to perform this action.');
+                    return;
+                  }
                   onDispatch(asset);
                 }}
                 className={`whitespace-nowrap text-xs font-semibold px-4 py-2 rounded-lg border-2 transition-colors ${
@@ -119,6 +124,10 @@ export default function AssetCard({ asset, onViewDetails, onRoute, onDelete, onD
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                if (isViewer) {
+                  toast.error('You do not have permission to perform this action.');
+                  return;
+                }
                 onRoute(asset);
               }}
               className="whitespace-nowrap text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 px-4 py-2 rounded-lg border-2 border-gray-400 hover:border-gray-600 transition-colors"
@@ -126,7 +135,7 @@ export default function AssetCard({ asset, onViewDetails, onRoute, onDelete, onD
               Route / Reroute
             </button>
 
-            {onDelete && (
+            {onDelete && canModifyStatusOrDelete && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -137,14 +146,6 @@ export default function AssetCard({ asset, onViewDetails, onRoute, onDelete, onD
                 Delete
               </button>
             )}
-          </>
-        )}
-
-        {isViewer && (isDispatched || isReadyToDispatch) && (
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusInfo.className}`}>
-            {statusInfo.label}
-          </span>
-        )}
       </div>
     </div>
   );

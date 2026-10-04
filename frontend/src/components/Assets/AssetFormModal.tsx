@@ -97,7 +97,7 @@ export default function AssetFormModal({ isOpen, onClose, onSuccess, assetToEdit
   };
 
   const resetForm = () => {
-    const defaultOp = user?.role === 'OPS_MANAGEMENT' ? 'OTHERS' : 'WAGON_POH';
+    const defaultOp = ['MANUFACTURING_ADMIN', 'CRANE_ADMIN', 'LOCO_ADMIN'].includes(user?.role || '') ? 'OTHERS' : 'WAGON_POH';
     setOperation(defaultOp);
     setAssetNumber('');
     setRemark('');

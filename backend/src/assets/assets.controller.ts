@@ -12,7 +12,7 @@ export class AssetsController {
   constructor(@Inject(AssetsService) private readonly assetsService: AssetsService) {}
 
   @Post()
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.OPS_MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN, UserRole.MANUFACTURING_ADMIN, UserRole.CRANE_ADMIN, UserRole.LOCO_ADMIN)
   registerAsset(@Body() dto: RegisterAssetDto, @CurrentUser() user: CurrentUserPayload) {
     return this.assetsService.registerAsset(dto, user);
   }
@@ -28,7 +28,7 @@ export class AssetsController {
   }
 
   @Patch(':assetNumber/status')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.OPS_MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN, UserRole.MANUFACTURING_ADMIN, UserRole.CRANE_ADMIN, UserRole.LOCO_ADMIN)
   updateStatus(
     @Param('assetNumber') assetNumber: string,
     @Body() dto: UpdateAssetStatusDto,
@@ -38,7 +38,7 @@ export class AssetsController {
   }
 
   @Delete(':assetNumber')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.MANAGEMENT, UserRole.OPS_MANAGEMENT)
+  @Roles(UserRole.WAGON_ADMIN, UserRole.TPT_RAIL_ADMIN, UserRole.MANUFACTURING_ADMIN, UserRole.CRANE_ADMIN, UserRole.LOCO_ADMIN)
   removeAsset(@Param('assetNumber') assetNumber: string, @CurrentUser() user: CurrentUserPayload) {
     return this.assetsService.removeAsset(assetNumber, user);
   }
