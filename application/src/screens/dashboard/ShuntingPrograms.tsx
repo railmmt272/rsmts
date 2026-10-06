@@ -407,15 +407,14 @@ const ShuntingPrograms = () => {
                     <Text style={styles.cardValue}>{new Date(item.dateMarkedDone).toLocaleDateString()}</Text>
                   </View>
                 )}
-                <View style={{ marginTop: 8 }}>
-                  <Text style={styles.cardLabel}>Remarks:</Text>
-                  <Text 
-                    style={styles.remarkText}
-                    numberOfLines={expandedCards.has(item._id) ? undefined : 2}
-                  >
-                    {item.remark}
-                  </Text>
-                </View>
+                {expandedCards.has(item._id) && (
+                  <View style={{ marginTop: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#3b82f6' }}>
+                    <Text style={[styles.cardLabel, { marginBottom: 4 }]}>Remarks:</Text>
+                    <Text style={styles.remarkText}>
+                      {item.remark}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <View style={styles.cardActions}>

@@ -233,9 +233,6 @@ export default function ShuntingProgramsPage() {
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
                   RS No.
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Remarks
-                </th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
                   Date Marked Done
                 </th>
@@ -268,14 +265,13 @@ export default function ShuntingProgramsPage() {
               ) : (
                 currentPrograms.map((program, index) => {
                   const isExpanded = expandedRemarks.has(program._id);
-                  const isLong = program.remark && program.remark.length > 100;
-                  const displayText = isExpanded || !isLong 
-                    ? program.remark 
-                    : program.remark.slice(0, 100) + '...';
-
                   return (
-                    <tr key={program._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-6 text-sm text-gray-500">
+                    <React.Fragment key={program._id}>
+                      <tr 
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        onDoubleClick={() => toggleRemark(program._id)}
+                      >
+                        <td className="py-4 px-6 text-sm text-gray-500">
                         {(currentPage - 1) * itemsPerPage + index + 1}
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-500">
@@ -296,20 +292,7 @@ export default function ShuntingProgramsPage() {
                       <td className="py-4 px-6">
                         <span className="font-medium text-gray-900">{program.rsNo}</span>
                       </td>
-                      <td 
-                        className="py-4 px-6 text-gray-700 cursor-pointer"
-                        onDoubleClick={() => isLong && toggleRemark(program._id)}
-                      >
-                        <div className="whitespace-pre-wrap">{displayText}</div>
-                        {isLong && (
-                          <button
-                            onClick={() => toggleRemark(program._id)}
-                            className="text-blue-600 hover:text-blue-800 text-xs mt-1 font-medium focus:outline-none"
-                          >
-                            {isExpanded ? 'Show Less' : 'Show More'}
-                          </button>
-                        )}
-                      </td>
+
                       <td className="py-4 px-6 text-sm text-gray-500">
                         {program.dateMarkedDone ? new Date(program.dateMarkedDone).toLocaleDateString('en-GB') : '-'}
                       </td>
@@ -365,6 +348,15 @@ export default function ShuntingProgramsPage() {
                         </div>
                       </td>
                     </tr>
+                    {isExpanded && program.remark && (
+                      <tr className="bg-blue-50/50">
+                        <td colSpan={10} className="py-4 px-6 text-sm text-gray-700 border-l-4 border-blue-500">
+                          <span className="font-semibold text-gray-900 block mb-1">Remarks:</span>
+                          <div className="whitespace-pre-wrap">{program.remark}</div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })
               )}
