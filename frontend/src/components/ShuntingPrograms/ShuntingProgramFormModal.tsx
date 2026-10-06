@@ -20,10 +20,15 @@ export default function ShuntingProgramFormModal({
   programToEdit,
 }: ShuntingProgramFormModalProps) {
   const [initialPosition, setInitialPosition] = useState('');
+  const [finalPosition, setFinalPosition] = useState('');
+  const [rsType, setRsType] = useState('');
+  const [rsNo, setRsNo] = useState('');
   const [shop, setShop] = useState('');
   const [remark, setRemark] = useState('');
   const [locations, setLocations] = useState<any[]>([]);
+  const [assetCategories, setAssetCategories] = useState<any[]>([]);
   const [isInitialPositionModalOpen, setIsInitialPositionModalOpen] = useState(false);
+  const [isFinalPositionModalOpen, setIsFinalPositionModalOpen] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
@@ -32,16 +37,32 @@ export default function ShuntingProgramFormModal({
     if (isOpen) {
       if (programToEdit) {
         setInitialPosition(programToEdit.initialPosition);
+        setFinalPosition(programToEdit.finalPosition || '');
+        setRsType(programToEdit.rsType || '');
+        setRsNo(programToEdit.rsNo || '');
         setRemark(programToEdit.remark);
         setShop(programToEdit.shop || '');
       } else {
         setInitialPosition('');
+        setFinalPosition('');
+        setRsType('');
+        setRsNo('');
         setRemark('');
         setShop('');
       }
       fetchLocations();
+      fetchAssetCategories();
     }
   }, [isOpen, programToEdit]);
+
+  const fetchAssetCategories = async () => {
+    try {
+      const response = await api.get('/asset-categories');
+      setAssetCategories(response.data);
+    } catch (error) {
+      console.error('Failed to fetch asset categories:', error);
+    }
+  };
 
   const fetchLocations = async () => {
     try {
@@ -54,7 +75,7 @@ export default function ShuntingProgramFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!initialPosition || !remark || !shop) {
+    if (!initialPosition || !remark || !shop || !rsType || !rsNo) {
       toast.error('Please fill in all required fields.');
       return;
     }
@@ -62,16 +83,16 @@ export default function ShuntingProgramFormModal({
     setSubmitting(true);
     try {
       if (programToEdit) {
-        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, remark, shop });
-        toast.success('Shunting program updated successfully');
+        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, finalPosition, rsType, rsNo, remark, shop });
+        toast.success('Request updated successfully');
       } else {
-        await api.post('/shunting-programs', { initialPosition, remark, shop });
-        toast.success('Shunting program added successfully');
+        await api.post('/shunting-programs', { initialPosition, finalPosition, rsType, rsNo, remark, shop });
+        toast.success('Request added successfully');
       }
       onSuccess();
       onClose();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to save shunting program');
+      toast.error(error.response?.data?.message || 'Failed to save request');
     } finally {
       setSubmitting(false);
     }
@@ -85,8 +106,8 @@ export default function ShuntingProgramFormModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">{programToEdit ? 'Edit Shunting Program' : 'Add New Shunting Program'}</h3>
-            <p className="text-sm text-gray-500 mt-1">{programToEdit ? 'Update details of the shunting task' : 'Create a movement task or shunting program'}</p>
+            <h3 className="text-lg font-semibold text-gray-900">{programToEdit ? 'Edit Request' : 'Add New Request'}</h3>
+            <p className="text-sm text-gray-500 mt-1">{programToEdit ? 'Update details of the request' : 'Create a movement task or request'}</p>
           </div>
           <button
             onClick={onClose}
@@ -105,7 +126,10 @@ export default function ShuntingProgramFormModal({
               <label className="block text-sm font-medium text-gray-900 mb-2">Shop</label>
               <select
                 value={shop}
-                onChange={(e) => setShop(e.target.value)}
+                onChange={(e) => {
+                  setShop(e.target.value);
+                  setRsType('');
+                }}
                 required
                 className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white sm:text-sm"
               >
@@ -116,6 +140,46 @@ export default function ShuntingProgramFormModal({
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* RS Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">RS Type</label>
+              <select
+                value={rsType}
+                onChange={(e) => setRsType(e.target.value)}
+                required
+                disabled={!shop}
+                className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white sm:text-sm disabled:bg-gray-100 disabled:text-gray-500"
+              >
+                <option value="" disabled>{shop ? 'Select RS Type...' : 'Select a Shop first'}</option>
+                {assetCategories
+                  .filter(cat => cat.level === 'PARENT' && (
+                    (shop === 'WAGON' && cat.parentCode === 'WAGON') ||
+                    (shop === 'LOCO' && cat.parentCode === 'LOCO') ||
+                    (shop === 'CRANE' && (cat.parentCode === 'CRANE' || cat.parentCode === 'TOWER CAR')) ||
+                    (shop === 'MANUFACTURING' && cat.parentCode === 'MANUFACTURING')
+                  ))
+                  .map((cat) => (
+                    <option key={cat.code} value={cat.code}>
+                      {cat.name} ({cat.code})
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+
+            {/* RS No. Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">RS No.</label>
+              <input
+                type="text"
+                value={rsNo}
+                onChange={(e) => setRsNo(e.target.value)}
+                required
+                placeholder="Enter RS No."
+                className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white sm:text-sm"
+              />
             </div>
 
             {/* Initial Position Selection */}
@@ -140,9 +204,31 @@ export default function ShuntingProgramFormModal({
               />
             </div>
 
+            {/* Final Position Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Final Position <span className="text-gray-400 font-normal">(Optional)</span></label>
+              <button
+                type="button"
+                onClick={() => setIsFinalPositionModalOpen(true)}
+                className="flex items-center justify-between w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
+              >
+                <span className={finalPosition ? "text-gray-900 font-medium" : "text-gray-500"}>
+                  {finalPosition ? `${locations.find(l => l.code === finalPosition)?.name || finalPosition} (${finalPosition})` : "Select Final Position..."}
+                </span>
+                <ChevronDown className="w-5 h-5 text-gray-500" />
+              </button>
+              <LocationSelectModal
+                isOpen={isFinalPositionModalOpen}
+                onClose={() => setIsFinalPositionModalOpen(false)}
+                locations={locations}
+                onSelect={setFinalPosition}
+                title="Select Final Position"
+              />
+            </div>
+
             {/* Program Details */}
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Shunting Program</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Remarks</label>
               <textarea
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
@@ -180,7 +266,7 @@ export default function ShuntingProgramFormModal({
                 Saving...
               </>
             ) : (
-              'Save Program'
+              'Save Request'
             )}
           </button>
         </div>

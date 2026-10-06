@@ -12,6 +12,9 @@ import ConfirmModal from '../../components/ConfirmModal';
 interface ShuntingProgram {
   _id: string;
   initialPosition: string;
+  finalPosition?: string;
+  rsType: string;
+  rsNo: string;
   shop: string;
   remark: string;
   status: 'PENDING' | 'DONE';
@@ -37,12 +40,18 @@ const ShuntingPrograms = () => {
   
   // Form State
   const [initialPosition, setInitialPosition] = useState('');
+  const [finalPosition, setFinalPosition] = useState('');
+  const [rsType, setRsType] = useState('');
+  const [rsNo, setRsNo] = useState('');
   const [shop, setShop] = useState('');
   const [remark, setRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
+  const [assetCategories, setAssetCategories] = useState<any[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [finalPickerVisible, setFinalPickerVisible] = useState(false);
   const [shopPickerVisible, setShopPickerVisible] = useState(false);
+  const [rsTypePickerVisible, setRsTypePickerVisible] = useState(false);
 
   const SHOP_OPTIONS = ['WAGON', 'LOCO', 'CRANE', 'MANUFACTURING'];
 
@@ -90,9 +99,10 @@ const ShuntingPrograms = () => {
       if (pageNumber === 1) setLoading(true);
       else setLoadingMore(true);
 
-      const [programsRes, locsRes] = await Promise.all([
+      const [programsRes, locsRes, catRes] = await Promise.all([
         api.get(`/shunting-programs?page=${pageNumber}&limit=${limit}`),
-        pageNumber === 1 ? api.get('/locations?isActive=true').catch(() => ({ data: [] })) : Promise.resolve({ data: locations })
+        pageNumber === 1 ? api.get('/locations?isActive=true').catch(() => ({ data: [] })) : Promise.resolve({ data: locations }),
+        pageNumber === 1 ? api.get('/asset-categories').catch(() => ({ data: [] })) : Promise.resolve({ data: assetCategories })
       ]);
       
       const responseData = programsRes.data;
@@ -102,7 +112,7 @@ const ShuntingPrograms = () => {
       if (pageNumber === 1) {
         setPrograms(newPrograms);
         if (locsRes.data.length > 0) setLocations(locsRes.data);
-        if (locsRes.data.length > 0) setLocations(locsRes.data);
+        if (catRes.data.length > 0) setAssetCategories(catRes.data);
       } else {
         if (!isPaginated) {
           setHasMore(false);
@@ -194,11 +204,17 @@ const ShuntingPrograms = () => {
     if (program) {
       setProgramToEdit(program);
       setInitialPosition(program.initialPosition);
+      setFinalPosition(program.finalPosition || '');
+      setRsType(program.rsType || '');
+      setRsNo(program.rsNo || '');
       setShop(program.shop);
       setRemark(program.remark);
     } else {
       setProgramToEdit(null);
       setInitialPosition('');
+      setFinalPosition('');
+      setRsType('');
+      setRsNo('');
       setShop('');
       setRemark('');
     }
@@ -206,18 +222,18 @@ const ShuntingPrograms = () => {
   };
 
   const handleSubmit = async () => {
-    if (!initialPosition.trim() || !shop.trim() || !remark.trim()) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Initial Position, Shop and remark are required' });
+    if (!initialPosition.trim() || !shop.trim() || !rsType.trim() || !rsNo.trim() || !remark.trim()) {
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill in all required fields' });
       return;
     }
     
     setSubmitting(true);
     try {
       if (programToEdit) {
-        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, shop, remark });
+        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, finalPosition: finalPosition || undefined, rsType, rsNo, shop, remark });
         Toast.show({ type: 'success', text1: 'Updated', text2: 'Program updated successfully' });
       } else {
-        await api.post('/shunting-programs', { initialPosition, shop, remark, status: 'PENDING' });
+        await api.post('/shunting-programs', { initialPosition, finalPosition: finalPosition || undefined, rsType, rsNo, shop, remark, status: 'PENDING' });
         Toast.show({ type: 'success', text1: 'Created', text2: 'Program created successfully' });
       }
       setModalVisible(false);
@@ -265,7 +281,7 @@ const ShuntingPrograms = () => {
         <View style={styles.headerLeft}>
           <ClipboardList size={28} color="#0f172a" />
           <View style={{ marginLeft: 12 }}>
-            <Text style={styles.pageTitle}>Shunting Programs</Text>
+            <Text style={styles.pageTitle}>Requests</Text>
             <Text style={styles.pageSubtitle}>Manage shop-wise tasks</Text>
           </View>
         </View>
@@ -368,9 +384,23 @@ const ShuntingPrograms = () => {
                   <Text style={styles.cardValue}>{item.shop}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  <Text style={styles.cardLabel}>RS Type:</Text>
+                  <Text style={styles.cardValue}>{item.rsType}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  <Text style={styles.cardLabel}>RS No:</Text>
+                  <Text style={styles.cardValue}>{item.rsNo}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', marginBottom: 4 }}>
                   <Text style={styles.cardLabel}>Initial Pos:</Text>
                   <Text style={styles.cardValue}>{item.initialPosition}</Text>
                 </View>
+                {item.finalPosition && (
+                  <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                    <Text style={styles.cardLabel}>Final Pos:</Text>
+                    <Text style={styles.cardValue}>{item.finalPosition}</Text>
+                  </View>
+                )}
                 {item.status === 'DONE' && item.dateMarkedDone && (
                   <View style={{ flexDirection: 'row', marginBottom: 4 }}>
                     <Text style={styles.cardLabel}>Done Date:</Text>
@@ -378,7 +408,7 @@ const ShuntingPrograms = () => {
                   </View>
                 )}
                 <View style={{ marginTop: 8 }}>
-                  <Text style={styles.cardLabel}>Remark:</Text>
+                  <Text style={styles.cardLabel}>Remarks:</Text>
                   <Text 
                     style={styles.remarkText}
                     numberOfLines={expandedCards.has(item._id) ? undefined : 2}
@@ -414,7 +444,7 @@ const ShuntingPrograms = () => {
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} />
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{programToEdit ? 'Edit Program' : 'New Program'}</Text>
+              <Text style={styles.modalTitle}>{programToEdit ? 'Edit Request' : 'Add New Request'}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
                 <X size={24} color="#64748b" />
               </TouchableOpacity>
@@ -431,6 +461,26 @@ const ShuntingPrograms = () => {
                 </Text>
               </TouchableOpacity>
 
+              <Text style={styles.inputLabel}>RS Type</Text>
+              <TouchableOpacity 
+                style={[styles.dropdownInput, !shop && { backgroundColor: '#f1f5f9' }]}
+                onPress={() => shop && setRsTypePickerVisible(true)}
+                disabled={!shop}
+              >
+                <Text style={rsType ? styles.inputText : styles.placeholderText}>
+                  {rsType ? `${assetCategories.find(c => c.code === rsType)?.name || rsType} (${rsType})` : (shop ? 'Select RS Type...' : 'Select a Shop first')}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.inputLabel}>RS No.</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter RS No."
+                value={rsNo}
+                onChangeText={setRsNo}
+                placeholderTextColor="#9ca3af"
+              />
+
               <Text style={styles.inputLabel}>Initial Position</Text>
               <TouchableOpacity 
                 style={styles.dropdownInput}
@@ -441,7 +491,17 @@ const ShuntingPrograms = () => {
                 </Text>
               </TouchableOpacity>
 
-              <Text style={styles.inputLabel}>Shunting Program</Text>
+              <Text style={styles.inputLabel}>Final Position (Optional)</Text>
+              <TouchableOpacity 
+                style={styles.dropdownInput}
+                onPress={() => setFinalPickerVisible(true)}
+              >
+                <Text style={finalPosition ? styles.inputText : styles.placeholderText}>
+                  {finalPosition ? `${locations.find(l => l.code === finalPosition)?.name || finalPosition} (${finalPosition})` : 'Select Final Position...'}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.inputLabel}>Remarks</Text>
               <TextInput
                 style={[styles.textInput, styles.textArea]}
                 placeholder="Enter details..."
@@ -453,14 +513,14 @@ const ShuntingPrograms = () => {
               />
               
               <TouchableOpacity 
-                style={[styles.submitBtn, (!initialPosition.trim() || !shop.trim() || !remark.trim() || submitting) && styles.submitBtnDisabled]} 
+                style={[styles.submitBtn, (!initialPosition.trim() || !shop.trim() || !rsType.trim() || !rsNo.trim() || !remark.trim() || submitting) && styles.submitBtnDisabled]} 
                 onPress={handleSubmit}
-                disabled={!initialPosition.trim() || !shop.trim() || !remark.trim() || submitting}
+                disabled={!initialPosition.trim() || !shop.trim() || !rsType.trim() || !rsNo.trim() || !remark.trim() || submitting}
               >
                 {submitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.submitBtnText}>{programToEdit ? 'Save Changes' : 'Create Program'}</Text>
+                  <Text style={styles.submitBtnText}>{programToEdit ? 'Save Changes' : 'Add new request'}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -476,6 +536,15 @@ const ShuntingPrograms = () => {
         locations={locations}
         onSelect={setInitialPosition}
         selectedCode={initialPosition}
+      />
+
+      <LocationPickerModal
+        visible={finalPickerVisible}
+        onClose={() => setFinalPickerVisible(false)}
+        title="Select Final Position"
+        locations={locations}
+        onSelect={setFinalPosition}
+        selectedCode={finalPosition}
       />
 
       {/* Reusable Shop Picker Modal */}
@@ -496,11 +565,49 @@ const ShuntingPrograms = () => {
                   style={[styles.pickerItem, shop === item && styles.pickerItemSelected]}
                   onPress={() => {
                     setShop(item);
+                    setRsType('');
                     setShopPickerVisible(false);
                   }}
                 >
                   <Text style={[styles.pickerItemText, shop === item && styles.pickerItemTextSelected]}>
                     {item}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reusable RS Type Picker Modal */}
+      <Modal visible={rsTypePickerVisible} transparent animationType="slide" onRequestClose={() => setRsTypePickerVisible(false)}>
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerContent}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select RS Type</Text>
+              <TouchableOpacity onPress={() => setRsTypePickerVisible(false)} style={styles.closeBtn}>
+                <X color="#64748b" size={24} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={assetCategories.filter(cat => cat.level === 'PARENT' && (
+                (shop === 'WAGON' && cat.parentCode === 'WAGON') ||
+                (shop === 'LOCO' && cat.parentCode === 'LOCO') ||
+                (shop === 'CRANE' && (cat.parentCode === 'CRANE' || cat.parentCode === 'TOWER CAR')) ||
+                (shop === 'MANUFACTURING' && cat.parentCode === 'MANUFACTURING')
+              ))}
+              keyExtractor={item => item.code}
+              ListEmptyComponent={<Text style={styles.emptyText}>No types available for {shop}</Text>}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={[styles.pickerItem, rsType === item.code && styles.pickerItemSelected]}
+                  onPress={() => {
+                    setRsType(item.code);
+                    setRsTypePickerVisible(false);
+                  }}
+                >
+                  <Text style={[styles.pickerItemText, rsType === item.code && styles.pickerItemTextSelected]}>
+                    {item.name} ({item.code})
                   </Text>
                 </TouchableOpacity>
               )}

@@ -5,6 +5,18 @@ export class CreateShuntingProgramDto {
   @IsNotEmpty()
   initialPosition: string;
 
+  @IsOptional()
+  @IsString()
+  finalPosition?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  rsType: string;
+
+  @IsString()
+  @IsNotEmpty()
+  rsNo: string;
+
   @IsString()
   @IsNotEmpty()
   @IsEnum(['WAGON', 'LOCO', 'CRANE', 'MANUFACTURING'])

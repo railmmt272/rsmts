@@ -12,6 +12,9 @@ import { Trash2, Edit2 } from 'lucide-react';
 interface ShuntingProgram {
   _id: string;
   initialPosition: string;
+  finalPosition?: string;
+  rsType: string;
+  rsNo: string;
   remark: string;
   shop: string;
   status: 'PENDING' | 'DONE';
@@ -137,9 +140,9 @@ export default function ShuntingProgramsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <ListTodo className="h-6 w-6" />
-            Shunting Programs
+            Requests
           </h1>
-          <p className="text-gray-500 mt-1">Manage shop-wise shunting tasks and movements</p>
+          <p className="text-gray-500 mt-1">Manage shop-wise requests and movements</p>
         </div>
         <button
           onClick={() => {
@@ -153,7 +156,7 @@ export default function ShuntingProgramsPage() {
           className="bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-black transition-colors flex items-center gap-2 font-medium"
         >
           <Plus className="h-4 w-4" />
-          Add New Program
+          Add New Request
         </button>
       </div>
 
@@ -221,8 +224,17 @@ export default function ShuntingProgramsPage() {
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">
                   Initial Position
                 </th>
+                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">
+                  Final Position
+                </th>
+                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+                  RS Type
+                </th>
+                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+                  RS No.
+                </th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Shunting Program
+                  Remarks
                 </th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
                   Date Marked Done
@@ -247,10 +259,10 @@ export default function ShuntingProgramsPage() {
                 </tr>
               ) : filteredAndSortedPrograms.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-500">
+                  <td colSpan={7} className="py-12 text-center text-gray-500">
                     <ListTodo className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                    <p className="text-lg font-medium text-gray-900">No programs found</p>
-                    <p>Try adjusting your filters or click "Add New Program" to create one.</p>
+                    <p className="text-lg font-medium text-gray-900">No requests found</p>
+                    <p>Try adjusting your filters or click "Add New Request" to create one.</p>
                   </td>
                 </tr>
               ) : (
@@ -274,6 +286,15 @@ export default function ShuntingProgramsPage() {
                       </td>
                       <td className="py-4 px-6">
                         <span className="font-medium text-gray-900">{program.initialPosition}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-medium text-gray-900">{program.finalPosition || '-'}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-medium text-gray-900">{program.rsType}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-medium text-gray-900">{program.rsNo}</span>
                       </td>
                       <td 
                         className="py-4 px-6 text-gray-700 cursor-pointer"
@@ -328,7 +349,7 @@ export default function ShuntingProgramsPage() {
                               setIsModalOpen(true);
                             }}
                             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Edit Program"
+                            title="Edit Request"
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
@@ -336,7 +357,7 @@ export default function ShuntingProgramsPage() {
                             <button
                               onClick={() => setConfirmDeleteId(program._id)}
                               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                              title="Delete Program"
+                              title="Delete Request"
                             >
                               <Trash2 className="w-5 h-5" />
                             </button>
@@ -407,7 +428,7 @@ export default function ShuntingProgramsPage() {
         onClose={() => setConfirmStatusConfig(null)}
         onConfirm={handleStatusChange}
         title="Confirm Status Change"
-        message={`Are you sure you want to mark this program as ${confirmStatusConfig?.newStatus.toLowerCase()}?`}
+        message={`Are you sure you want to mark this request as ${confirmStatusConfig?.newStatus.toLowerCase()}?`}
         confirmText={`Mark as ${confirmStatusConfig?.newStatus}`}
       />
 
@@ -415,8 +436,8 @@ export default function ShuntingProgramsPage() {
         isOpen={!!confirmDeleteId}
         onClose={() => setConfirmDeleteId(null)}
         onConfirm={handleDelete}
-        title="Delete Shunting Program"
-        message="Are you sure you want to delete this shunting program? This action cannot be undone."
+        title="Delete Request"
+        message="Are you sure you want to delete this request? This action cannot be undone."
         confirmText="Delete"
         isDestructive={true}
       />

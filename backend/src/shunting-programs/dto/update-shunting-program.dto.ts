@@ -8,6 +8,18 @@ export class UpdateShuntingProgramDto {
 
   @IsOptional()
   @IsString()
+  finalPosition?: string;
+
+  @IsOptional()
+  @IsString()
+  rsType?: string;
+
+  @IsOptional()
+  @IsString()
+  rsNo?: string;
+
+  @IsOptional()
+  @IsString()
   @IsNotEmpty()
   @IsEnum(['WAGON', 'LOCO', 'CRANE', 'MANUFACTURING'])
   shop?: string;
