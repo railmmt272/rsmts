@@ -162,7 +162,7 @@ export default function ShuntingProgramFormModal({
                   ))
                   .map((cat) => (
                     <option key={cat.code} value={cat.code}>
-                      {cat.name} ({cat.code})
+                      {cat.name}
                     </option>
                   ))
                 }
@@ -191,7 +191,7 @@ export default function ShuntingProgramFormModal({
                 className="flex items-center justify-between w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
               >
                 <span className={initialPosition ? "text-gray-900 font-medium" : "text-gray-500"}>
-                  {initialPosition ? `${locations.find(l => l.code === initialPosition)?.name || initialPosition} (${initialPosition})` : "Select Initial Position..."}
+                  {initialPosition ? `${locations.find(l => l.code === initialPosition)?.name || initialPosition}` : "Select Initial Position..."}
                 </span>
                 <ChevronDown className="w-5 h-5 text-gray-500" />
               </button>
@@ -213,7 +213,7 @@ export default function ShuntingProgramFormModal({
                 className="flex items-center justify-between w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white hover:bg-gray-50 transition-colors sm:text-sm text-left"
               >
                 <span className={finalPosition ? "text-gray-900 font-medium" : "text-gray-500"}>
-                  {finalPosition ? `${locations.find(l => l.code === finalPosition)?.name || finalPosition} (${finalPosition})` : "Select Final Position..."}
+                  {finalPosition ? `${locations.find(l => l.code === finalPosition)?.name || finalPosition}` : "Select Final Position..."}
                 </span>
                 <ChevronDown className="w-5 h-5 text-gray-500" />
               </button>

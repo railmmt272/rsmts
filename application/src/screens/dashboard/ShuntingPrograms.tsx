@@ -468,7 +468,7 @@ const ShuntingPrograms = () => {
                 disabled={!shop}
               >
                 <Text style={rsType ? styles.inputText : styles.placeholderText}>
-                  {rsType ? `${assetCategories.find(c => c.code === rsType)?.name || rsType} (${rsType})` : (shop ? 'Select RS Type...' : 'Select a Shop first')}
+                  {rsType ? `${assetCategories.find(c => c.code === rsType)?.name || rsType}` : (shop ? 'Select RS Type...' : 'Select a Shop first')}
                 </Text>
               </TouchableOpacity>
 
@@ -487,7 +487,7 @@ const ShuntingPrograms = () => {
                 onPress={() => setPickerVisible(true)}
               >
                 <Text style={initialPosition ? styles.inputText : styles.placeholderText}>
-                  {initialPosition ? `${locations.find(l => l.code === initialPosition)?.name || initialPosition} (${initialPosition})` : 'Select Initial Position...'}
+                  {initialPosition ? `${locations.find(l => l.code === initialPosition)?.name || initialPosition}` : 'Select Initial Position...'}
                 </Text>
               </TouchableOpacity>
 
@@ -497,7 +497,7 @@ const ShuntingPrograms = () => {
                 onPress={() => setFinalPickerVisible(true)}
               >
                 <Text style={finalPosition ? styles.inputText : styles.placeholderText}>
-                  {finalPosition ? `${locations.find(l => l.code === finalPosition)?.name || finalPosition} (${finalPosition})` : 'Select Final Position...'}
+                  {finalPosition ? `${locations.find(l => l.code === finalPosition)?.name || finalPosition}` : 'Select Final Position...'}
                 </Text>
               </TouchableOpacity>
 
@@ -607,7 +607,7 @@ const ShuntingPrograms = () => {
                   }}
                 >
                   <Text style={[styles.pickerItemText, rsType === item.code && styles.pickerItemTextSelected]}>
-                    {item.name} ({item.code})
+                    {item.name}
                   </Text>
                 </TouchableOpacity>
               )}
