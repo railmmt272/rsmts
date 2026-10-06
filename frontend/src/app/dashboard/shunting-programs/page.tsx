@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import { Plus, ListTodo, CheckCircle2, Clock } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
@@ -266,7 +266,7 @@ export default function ShuntingProgramsPage() {
                 currentPrograms.map((program, index) => {
                   const isExpanded = expandedRemarks.has(program._id);
                   return (
-                    <React.Fragment key={program._id}>
+                    <Fragment key={program._id}>
                       <tr 
                         className="hover:bg-gray-50 transition-colors cursor-pointer"
                         onDoubleClick={() => toggleRemark(program._id)}
@@ -356,7 +356,7 @@ export default function ShuntingProgramsPage() {
                         </td>
                       </tr>
                     )}
-                    </React.Fragment>
+                    </Fragment>
                   );
                 })
               )}
