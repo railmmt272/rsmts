@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, ChevronDown, Search, ArrowRight, Check, AlertCircle, TrainFront } from 'lucide-react';
+import { X, ChevronDown, Search, ArrowRight, Check, AlertCircle, TrainFront, Calendar } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -399,13 +399,29 @@ export default function WorkRegisterFormModal({
             {/* Date */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">Date <span className="text-red-500">*</span></label>
-              <input
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                required
-                className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm"
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      e.currentTarget.showPicker?.();
+                    } catch {}
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Tab') {
+                      e.preventDefault();
+                      try {
+                        (e.target as HTMLInputElement).showPicker?.();
+                      } catch {}
+                    }
+                  }}
+                  required
+                  className="block w-full border border-gray-300 rounded-lg p-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer bg-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                />
+                <Calendar className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
 
             {/* Shift */}

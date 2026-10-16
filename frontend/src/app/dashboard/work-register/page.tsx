@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Fragment } from 'react';
-import { BookOpen, Plus, CheckCircle2, Clock, AlertCircle, XCircle, Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, Plus, CheckCircle2, Clock, AlertCircle, XCircle, Edit2, Trash2, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -202,19 +202,51 @@ export default function WorkRegisterPage() {
         {/* Date Range */}
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-          />
+          <div className="relative">
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker?.();
+                } catch {}
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Tab') {
+                  e.preventDefault();
+                  try {
+                    (e.target as HTMLInputElement).showPicker?.();
+                  } catch {}
+                }
+              }}
+              className="border border-gray-300 rounded-lg pl-3 pr-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer bg-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+            />
+            <Calendar className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
           <span className="text-gray-400 text-sm">to</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-          />
+          <div className="relative">
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker?.();
+                } catch {}
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Tab') {
+                  e.preventDefault();
+                  try {
+                    (e.target as HTMLInputElement).showPicker?.();
+                  } catch {}
+                }
+              }}
+              className="border border-gray-300 rounded-lg pl-3 pr-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer bg-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+            />
+            <Calendar className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
           {(startDate || endDate) && (
             <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
           )}

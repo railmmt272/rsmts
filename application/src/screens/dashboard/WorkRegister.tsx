@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  BookOpen, Plus, CheckCircle2, Clock, AlertCircle, XCircle, Edit2, Trash2, X, ChevronDown, ChevronUp
+  BookOpen, Plus, CheckCircle2, Clock, AlertCircle, XCircle, Edit2, Trash2, X, ChevronDown, ChevronUp, Calendar
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Toast from 'react-native-toast-message';
@@ -37,6 +37,13 @@ interface ShuntingProgramRef {
 }
 
 const formatLabel = (str?: string) => (str ? str.replace(/_/g, ' ') : '-');
+
+const formatLocalDate = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 interface WorkRegister {
   _id: string;
@@ -98,7 +105,7 @@ const WorkRegister = () => {
   const [pendingPrograms, setPendingPrograms] = useState<ShuntingProgramRef[]>([]);
   const [programPickerVisible, setProgramPickerVisible] = useState(false);
   const [selectedProgramId, setSelectedProgramId] = useState('');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(formatLocalDate(new Date()));
   const [showFormDatePicker, setShowFormDatePicker] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ShiftType | ''>('');
   const [selectedStatus, setSelectedStatus] = useState<WorkStatus>('NOT_ATTENDED');
@@ -170,7 +177,7 @@ const WorkRegister = () => {
   const openAddModal = () => {
     setRecordToEdit(null);
     setSelectedProgramId('');
-    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormDate(formatLocalDate(new Date()));
     setSelectedShift('');
     setSelectedStatus('NOT_ATTENDED');
     setFormRemark('');
@@ -287,9 +294,12 @@ const WorkRegister = () => {
         {/* Date filter */}
         <View style={styles.dateRow}>
           <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
-            <Text style={dateFilter ? styles.dateBtnTextActive : styles.dateBtnText}>
-              {dateFilter ? dateFilter : 'Filter by Date'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={dateFilter ? styles.dateBtnTextActive : styles.dateBtnText}>
+                {dateFilter ? new Date(dateFilter + 'T00:00:00').toLocaleDateString('en-GB') : 'Filter by Date'}
+              </Text>
+              <Calendar size={16} color={dateFilter ? '#0f172a' : '#9ca3af'} />
+            </View>
           </TouchableOpacity>
           {dateFilter && (
             <TouchableOpacity onPress={() => setDateFilter('')} style={styles.clearDateBtn}>
@@ -299,13 +309,13 @@ const WorkRegister = () => {
         </View>
         {showDatePicker && (
           <DateTimePicker
-            value={dateFilter ? new Date(dateFilter) : new Date()}
+            value={dateFilter ? new Date(dateFilter + 'T00:00:00') : new Date()}
             mode="date"
             display="default"
             onChange={(event, selected) => {
               if (Platform.OS === 'android') setShowDatePicker(false);
               if (event.type === 'set' && selected) {
-                setDateFilter(selected.toISOString().split('T')[0]);
+                setDateFilter(formatLocalDate(selected));
               } else if (event.type === 'dismissed') {
                 setShowDatePicker(false);
               }
@@ -490,17 +500,23 @@ const WorkRegister = () => {
 
               {/* Date */}
               <Text style={styles.inputLabel}>Date *</Text>
-              <TouchableOpacity style={styles.dropdownInput} onPress={() => setShowFormDatePicker(true)}>
-                <Text style={styles.inputText}>{formDate}</Text>
+              <TouchableOpacity
+                style={[styles.dropdownInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                onPress={() => setShowFormDatePicker(true)}
+              >
+                <Text style={styles.inputText}>
+                  {new Date(formDate + 'T00:00:00').toLocaleDateString('en-GB')}
+                </Text>
+                <Calendar size={18} color="#64748b" />
               </TouchableOpacity>
               {showFormDatePicker && (
                 <DateTimePicker
-                  value={new Date(formDate)}
+                  value={new Date(formDate + 'T00:00:00')}
                   mode="date"
                   display="default"
                   onChange={(event, selected) => {
                     if (Platform.OS === 'android') setShowFormDatePicker(false);
-                    if (event.type === 'set' && selected) setFormDate(selected.toISOString().split('T')[0]);
+                    if (event.type === 'set' && selected) setFormDate(formatLocalDate(selected));
                     else if (event.type === 'dismissed') setShowFormDatePicker(false);
                   }}
                 />
