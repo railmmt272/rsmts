@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LayoutDashboard, User, TrainFront, ClipboardList } from 'lucide-react-native';
+import { LayoutDashboard, User, TrainFront, ClipboardList, BookOpen } from 'lucide-react-native';
 import CommandCenter from './CommandCenter';
 import RegisterAsset from './RegisterAsset';
 import ShuntingPrograms from './ShuntingPrograms';
+import WorkRegister from './WorkRegister';
 import Profile from './Profile';
 
-type TabType = 'CommandCenter' | 'RegisterAsset' | 'ShuntingPrograms' | 'Profile';
+type TabType = 'CommandCenter' | 'RegisterAsset' | 'ShuntingPrograms' | 'WorkRegister' | 'Profile';
 
 const MainTabs = () => {
   const [activeTab, setActiveTab] = useState<TabType>('CommandCenter');
@@ -20,6 +21,8 @@ const MainTabs = () => {
         return <RegisterAsset />;
       case 'ShuntingPrograms':
         return <ShuntingPrograms />;
+      case 'WorkRegister':
+        return <WorkRegister />;
       case 'Profile':
         return <Profile />;
       default:
@@ -66,6 +69,17 @@ const MainTabs = () => {
               color={activeTab === 'ShuntingPrograms' ? '#0284c7' : '#9ca3af'}
             />
             {activeTab === 'ShuntingPrograms' && <View style={styles.activeIndicator} />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('WorkRegister')}
+          >
+            <BookOpen
+              size={24}
+              color={activeTab === 'WorkRegister' ? '#0284c7' : '#9ca3af'}
+            />
+            {activeTab === 'WorkRegister' && <View style={styles.activeIndicator} />}
           </TouchableOpacity>
 
           <TouchableOpacity

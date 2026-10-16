@@ -15,6 +15,7 @@ import { RolesGuard } from './auth/guards/roles.guard.js';
 import { SystemModule } from './system/system.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { ShuntingProgramsModule } from './shunting-programs/shunting-programs.module.js';
+import { WorkRegistersModule } from './work-registers/work-registers.module.js';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ShuntingProgramsModule } from './shunting-programs/shunting-programs.mo
     SystemModule,
     AnalyticsModule,
     ShuntingProgramsModule,
+    WorkRegistersModule,
   ],
   controllers: [AppController],
   providers: [

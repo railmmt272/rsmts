@@ -55,7 +55,7 @@ const LoginScreen = () => {
     setIsLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
-      
+
       if (res.data.accessToken) {
         await AsyncStorage.setItem('accessToken', res.data.accessToken);
         if (res.data.refreshToken) {
@@ -201,7 +201,7 @@ const LoginScreen = () => {
 
           {/* Footer */}
           <View style={styles.footerContainer}>
-            <Text style={styles.version}>v1.0.0</Text>
+            <Text style={styles.version}>v2.0.0</Text>
             <Text style={styles.footerText}>Keep Assets Moving</Text>
           </View>
         </ScrollView>
