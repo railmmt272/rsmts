@@ -33,7 +33,10 @@ interface ShuntingProgramRef {
   rsNo: string;
   initialPosition: string;
   finalPosition?: string;
+  remark?: string;
 }
+
+const formatLabel = (str?: string) => (str ? str.replace(/_/g, ' ') : '-');
 
 interface WorkRegister {
   _id: string;
@@ -379,11 +382,11 @@ const WorkRegister = () => {
                 {/* Card Body */}
                 <View style={styles.cardBody}>
                   <View style={styles.infoRow}><Text style={styles.infoLabel}>Shop:</Text><Text style={styles.infoValue}>{sp?.shop ?? '-'}</Text></View>
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>RS Type:</Text><Text style={styles.infoValue}>{sp?.rsType ?? '-'}</Text></View>
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>RS Type:</Text><Text style={styles.infoValue}>{formatLabel(sp?.rsType)}</Text></View>
                   <View style={styles.infoRow}><Text style={styles.infoLabel}>RS No:</Text><Text style={styles.infoValue}>{sp?.rsNo ?? '-'}</Text></View>
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Initial Pos:</Text><Text style={styles.infoValue}>{sp?.initialPosition ?? '-'}</Text></View>
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Initial Pos:</Text><Text style={styles.infoValue}>{formatLabel(sp?.initialPosition)}</Text></View>
                   {sp?.finalPosition && (
-                    <View style={styles.infoRow}><Text style={styles.infoLabel}>Final Pos:</Text><Text style={styles.infoValue}>{sp.finalPosition}</Text></View>
+                    <View style={styles.infoRow}><Text style={styles.infoLabel}>Final Pos:</Text><Text style={styles.infoValue}>{formatLabel(sp.finalPosition)}</Text></View>
                   )}
                 </View>
 
@@ -461,10 +464,27 @@ const WorkRegister = () => {
                   <TouchableOpacity style={styles.dropdownInput} onPress={() => setProgramPickerVisible(true)}>
                     <Text style={selectedProgramId ? styles.inputText : styles.placeholderText}>
                       {selectedProgram
-                        ? `[${selectedProgram.shop}] ${selectedProgram.rsType} — ${selectedProgram.rsNo}`
+                        ? `[${selectedProgram.shop}] ${selectedProgram.rsNo} — ${formatLabel(selectedProgram.rsType)}`
                         : 'Select program...'}
                     </Text>
                   </TouchableOpacity>
+                  {selectedProgram && (
+                    <View style={styles.selectedProgramInfo}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Program Details</Text>
+                        <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#f1f5f9' }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#334155' }}>{selectedProgram.shop}</Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }}>RS No: {selectedProgram.rsNo} ({formatLabel(selectedProgram.rsType)})</Text>
+                      <Text style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                        Route: {formatLabel(selectedProgram.initialPosition)}{selectedProgram.finalPosition ? ` → ${formatLabel(selectedProgram.finalPosition)}` : ''}
+                      </Text>
+                      {selectedProgram.remark ? (
+                        <Text style={{ fontSize: 11, fontStyle: 'italic', color: '#64748b', marginTop: 4 }}>Note: {selectedProgram.remark}</Text>
+                      ) : null}
+                    </View>
+                  )}
                 </>
               )}
 
@@ -558,10 +578,25 @@ const WorkRegister = () => {
                   style={[styles.pickerItem, selectedProgramId === item._id && styles.pickerItemSelected]}
                   onPress={() => { setSelectedProgramId(item._id); setProgramPickerVisible(false); }}
                 >
-                  <Text style={[styles.pickerItemText, selectedProgramId === item._id && styles.pickerItemTextSelected]}>
-                    [{item.shop}] {item.rsType} — {item.rsNo}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#f1f5f9' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569' }}>{item.shop}</Text>
+                      </View>
+                      <Text style={[styles.pickerItemText, selectedProgramId === item._id && styles.pickerItemTextSelected]}>
+                        RS No: {item.rsNo}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 12, color: '#64748b' }}>({formatLabel(item.rsType)})</Text>
+                  </View>
+                  <Text style={styles.pickerItemSub}>
+                    {formatLabel(item.initialPosition)}{item.finalPosition ? ` → ${formatLabel(item.finalPosition)}` : ''}
                   </Text>
-                  <Text style={styles.pickerItemSub}>{item.initialPosition}{item.finalPosition ? ` → ${item.finalPosition}` : ''}</Text>
+                  {item.remark ? (
+                    <Text style={{ fontSize: 11, fontStyle: 'italic', color: '#94a3b8', marginTop: 3 }}>
+                      Note: {item.remark}
+                    </Text>
+                  ) : null}
                 </TouchableOpacity>
               )}
             />
@@ -748,6 +783,7 @@ const styles = StyleSheet.create({
   statusOptionBtn: { borderWidth: 2, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statusOptionText: { fontSize: 14, fontWeight: '600', color: '#374151' },
   currentTag: { fontSize: 11, color: '#9ca3af' },
+  selectedProgramInfo: { backgroundColor: '#f8fafc', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 14, marginTop: -6 },
 });
 
 export default WorkRegister;

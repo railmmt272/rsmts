@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { X, ChevronDown, Search, ArrowRight, Check, AlertCircle, TrainFront } from 'lucide-react';
 import api from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -17,6 +17,13 @@ const STATUS_OPTIONS = [
   { value: 'COMPLETED', label: 'Completed' },
 ];
 
+const SHOP_BADGES: Record<string, { bg: string; text: string; border: string }> = {
+  WAGON: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+  LOCO: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  CRANE: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  MANUFACTURING: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+};
+
 interface PendingProgram {
   _id: string;
   shop: string;
@@ -24,6 +31,8 @@ interface PendingProgram {
   rsNo: string;
   initialPosition: string;
   finalPosition?: string;
+  remark?: string;
+  createdAt?: string;
 }
 
 interface WorkRegisterFormModalProps {
@@ -40,18 +49,33 @@ export default function WorkRegisterFormModal({
   recordToEdit,
 }: WorkRegisterFormModalProps) {
   const [pendingPrograms, setPendingPrograms] = useState<PendingProgram[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [assetCategories, setAssetCategories] = useState<any[]>([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
+
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shift, setShift] = useState('');
   const [status, setStatus] = useState('NOT_ATTENDED');
   const [remark, setRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Custom Dropdown state
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const toast = useToast();
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setIsDropdownOpen(false);
+      setSearchTerm('');
+      return;
+    }
 
     fetchPendingPrograms();
+    fetchLocationsAndCategories();
 
     if (recordToEdit) {
       setSelectedProgramId(recordToEdit.shuntingProgram?._id ?? '');
@@ -68,14 +92,81 @@ export default function WorkRegisterFormModal({
     }
   }, [isOpen, recordToEdit]);
 
+  // Click outside listener for custom dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const fetchPendingPrograms = async () => {
     try {
+      setLoadingPrograms(true);
       const res = await api.get('/work-registers/pending-programs');
       setPendingPrograms(res.data);
     } catch {
       console.error('Failed to fetch pending programs');
+    } finally {
+      setLoadingPrograms(false);
     }
   };
+
+  const fetchLocationsAndCategories = async () => {
+    try {
+      const [locRes, catRes] = await Promise.all([
+        api.get('/locations?isActive=true').catch(() => ({ data: [] })),
+        api.get('/asset-categories').catch(() => ({ data: [] })),
+      ]);
+      setLocations(locRes.data || []);
+      setAssetCategories(catRes.data || []);
+    } catch (e) {
+      console.error('Failed to fetch metadata', e);
+    }
+  };
+
+  const locationMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    locations.forEach(l => { if (l.code) map[l.code] = l.name || l.code; });
+    return map;
+  }, [locations]);
+
+  const categoryMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    assetCategories.forEach(c => { if (c.code) map[c.code] = c.name || c.code; });
+    return map;
+  }, [assetCategories]);
+
+  const formatLoc = (code?: string) => {
+    if (!code) return '-';
+    return locationMap[code] || code.replace(/_/g, ' ');
+  };
+
+  const formatCat = (code?: string) => {
+    if (!code) return '-';
+    return categoryMap[code] || code.replace(/_/g, ' ');
+  };
+
+  const filteredPrograms = useMemo(() => {
+    if (!searchTerm.trim()) return pendingPrograms;
+    const lower = searchTerm.toLowerCase();
+    return pendingPrograms.filter(p => {
+      const rsNoMatch = p.rsNo?.toLowerCase().includes(lower);
+      const shopMatch = p.shop?.toLowerCase().includes(lower);
+      const typeMatch = p.rsType?.toLowerCase().includes(lower) || formatCat(p.rsType).toLowerCase().includes(lower);
+      const initMatch = p.initialPosition?.toLowerCase().includes(lower) || formatLoc(p.initialPosition).toLowerCase().includes(lower);
+      const finalMatch = p.finalPosition?.toLowerCase().includes(lower) || formatLoc(p.finalPosition).toLowerCase().includes(lower);
+      return rsNoMatch || shopMatch || typeMatch || initMatch || finalMatch;
+    });
+  }, [pendingPrograms, searchTerm, locationMap, categoryMap]);
+
+  const selectedProgram = useMemo(() => {
+    return pendingPrograms.find(p => p._id === selectedProgramId) ||
+      (recordToEdit?.shuntingProgram?._id === selectedProgramId ? recordToEdit.shuntingProgram : null);
+  }, [pendingPrograms, selectedProgramId, recordToEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,11 +205,9 @@ export default function WorkRegisterFormModal({
 
   if (!isOpen) return null;
 
-  const selectedProgram = pendingPrograms.find(p => p._id === selectedProgramId);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl ring-1 ring-gray-900/5">
+      <div className="relative w-full max-w-xl rounded-xl bg-white shadow-2xl ring-1 ring-gray-900/5">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
@@ -135,35 +224,174 @@ export default function WorkRegisterFormModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
+        <div className="px-6 py-5 max-h-[75vh] overflow-y-auto">
           <form id="wr-form" onSubmit={handleSubmit} className="space-y-5">
 
             {/* Program selector — only for create */}
             {!recordToEdit && (
-              <div>
+              <div ref={dropdownRef} className="relative">
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Pending Shunting Program <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={selectedProgramId}
-                  onChange={e => setSelectedProgramId(e.target.value)}
-                  required
-                  className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white text-sm"
+
+                {/* Dropdown Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(prev => !prev)}
+                  className={`w-full flex items-center justify-between border rounded-lg p-3 text-left transition-all ${
+                    isDropdownOpen
+                      ? 'border-gray-900 ring-2 ring-gray-900/10'
+                      : 'border-gray-300 hover:border-gray-400'
+                  } bg-white`}
                 >
-                  <option value="" disabled>Select a pending program...</option>
-                  {pendingPrograms.length === 0 && (
-                    <option disabled>No pending programs available</option>
+                  {selectedProgram ? (
+                    <div className="flex items-center gap-2 overflow-hidden flex-1 mr-2">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase shrink-0 ${SHOP_BADGES[selectedProgram.shop]?.bg || 'bg-gray-100'} ${SHOP_BADGES[selectedProgram.shop]?.text || 'text-gray-800'} ${SHOP_BADGES[selectedProgram.shop]?.border || 'border-gray-200'}`}>
+                        {selectedProgram.shop}
+                      </span>
+                      <span className="font-semibold text-gray-900 text-sm shrink-0">
+                        {selectedProgram.rsNo}
+                      </span>
+                      <span className="text-xs text-gray-500 truncate">
+                        ({formatCat(selectedProgram.rsType)})
+                      </span>
+                      <span className="text-xs text-gray-400 ml-auto hidden sm:inline-flex items-center gap-1 shrink-0">
+                        {formatLoc(selectedProgram.initialPosition)}
+                        {selectedProgram.finalPosition && ` → ${formatLoc(selectedProgram.finalPosition)}`}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-400">
+                      {loadingPrograms ? 'Loading pending programs...' : 'Select a pending program...'}
+                    </span>
                   )}
-                  {pendingPrograms.map(p => (
-                    <option key={p._id} value={p._id}>
-                      [{p.shop}] {p.rsType} — {p.rsNo} ({p.initialPosition}{p.finalPosition ? ` → ${p.finalPosition}` : ''})
-                    </option>
-                  ))}
-                </select>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Custom Popover Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col max-h-72">
+                    {/* Search Bar inside Dropdown */}
+                    <div className="p-2.5 border-b border-gray-100 bg-gray-50/70">
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={e => setSearchTerm(e.target.value)}
+                          placeholder="Search RS No, type, shop, or location..."
+                          className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                    {/* Options List */}
+                    <div className="overflow-y-auto divide-y divide-gray-100 p-1 flex-1">
+                      {filteredPrograms.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-gray-400">
+                          {pendingPrograms.length === 0 ? 'No pending programs found.' : 'No matching programs found.'}
+                        </div>
+                      ) : (
+                        filteredPrograms.map(p => {
+                          const badge = SHOP_BADGES[p.shop] || { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200' };
+                          const isSelected = selectedProgramId === p._id;
+                          return (
+                            <div
+                              key={p._id}
+                              onClick={() => {
+                                setSelectedProgramId(p._id);
+                                setIsDropdownOpen(false);
+                                setSearchTerm('');
+                              }}
+                              className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                                isSelected ? 'bg-gray-100/80 font-medium' : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              {/* Top row: Shop + RS No + Type */}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase ${badge.bg} ${badge.text} ${badge.border}`}>
+                                    {p.shop}
+                                  </span>
+                                  <span className="font-semibold text-gray-900 text-sm">
+                                    {p.rsNo}
+                                  </span>
+                                  <span className="text-xs text-gray-600">
+                                    · {formatCat(p.rsType)}
+                                  </span>
+                                </div>
+                                {isSelected && <Check className="w-4 h-4 text-gray-900 shrink-0" />}
+                              </div>
+
+                              {/* Route row */}
+                              <div className="flex items-center gap-1.5 text-xs text-gray-600 mt-1.5">
+                                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                                <span className="font-medium text-gray-800">{formatLoc(p.initialPosition)}</span>
+                                {p.finalPosition && (
+                                  <>
+                                    <ArrowRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                                    <span className="font-medium text-gray-800">{formatLoc(p.finalPosition)}</span>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Program Remark */}
+                              {p.remark && (
+                                <p className="text-[11px] text-gray-500 mt-1.5 italic bg-white px-2 py-0.5 rounded border border-gray-100 line-clamp-1">
+                                  {p.remark}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Selected Program Detailed Info Card */}
                 {selectedProgram && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Shop: <strong>{selectedProgram.shop}</strong> · RS Type: <strong>{selectedProgram.rsType}</strong> · RS No: <strong>{selectedProgram.rsNo}</strong>
-                  </p>
+                  <div className="mt-3 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                        Program Details
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${SHOP_BADGES[selectedProgram.shop]?.bg || 'bg-gray-100'} ${SHOP_BADGES[selectedProgram.shop]?.text || 'text-gray-800'} ${SHOP_BADGES[selectedProgram.shop]?.border || 'border-gray-200'}`}>
+                        {selectedProgram.shop}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">RS Number</span>
+                        <span className="font-bold text-gray-900">{selectedProgram.rsNo}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">RS Type</span>
+                        <span className="font-medium text-gray-800">{formatCat(selectedProgram.rsType)}</span>
+                      </div>
+                      <div className="col-span-2 pt-1">
+                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Route</span>
+                        <div className="flex items-center gap-1.5 font-medium text-gray-800 mt-0.5">
+                          <span className="text-emerald-700">{formatLoc(selectedProgram.initialPosition)}</span>
+                          {selectedProgram.finalPosition && (
+                            <>
+                              <ArrowRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              <span className="text-blue-700">{formatLoc(selectedProgram.finalPosition)}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {selectedProgram.remark && (
+                        <div className="col-span-2 mt-1 bg-white p-2 rounded border border-gray-200">
+                          <span className="text-gray-400 block text-[10px] uppercase font-semibold mb-0.5">Remarks</span>
+                          <span className="text-gray-700 italic">{selectedProgram.remark}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             )}

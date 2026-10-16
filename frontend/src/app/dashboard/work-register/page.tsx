@@ -85,6 +85,48 @@ export default function WorkRegisterPage() {
   const { user } = useAuth();
   const canWrite = user?.role === 'WAGON_ADMIN' || user?.role === 'TPT_RAIL_ADMIN';
 
+  const [locations, setLocations] = useState<any[]>([]);
+  const [assetCategories, setAssetCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchMetadata();
+  }, []);
+
+  const fetchMetadata = async () => {
+    try {
+      const [locRes, catRes] = await Promise.all([
+        api.get('/locations?isActive=true').catch(() => ({ data: [] })),
+        api.get('/asset-categories').catch(() => ({ data: [] })),
+      ]);
+      setLocations(locRes.data || []);
+      setAssetCategories(catRes.data || []);
+    } catch (e) {
+      console.error('Failed to load metadata', e);
+    }
+  };
+
+  const locationMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    locations.forEach(l => { if (l.code) map[l.code] = l.name || l.code; });
+    return map;
+  }, [locations]);
+
+  const categoryMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    assetCategories.forEach(c => { if (c.code) map[c.code] = c.name || c.code; });
+    return map;
+  }, [assetCategories]);
+
+  const formatLoc = (code?: string) => {
+    if (!code) return '-';
+    return locationMap[code] || code.replace(/_/g, ' ');
+  };
+
+  const formatCat = (code?: string) => {
+    if (!code) return '-';
+    return categoryMap[code] || code.replace(/_/g, ' ');
+  };
+
   useEffect(() => {
     fetchRecords();
   }, [startDate, endDate, shiftFilter, statusFilter]);
@@ -259,10 +301,10 @@ export default function WorkRegisterPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-gray-700">{sp?.shop ?? '-'}</td>
-                        <td className="py-3 px-4 text-gray-700">{sp?.rsType ?? '-'}</td>
+                        <td className="py-3 px-4 text-gray-700">{formatCat(sp?.rsType)}</td>
                         <td className="py-3 px-4 font-medium text-gray-900">{sp?.rsNo ?? '-'}</td>
-                        <td className="py-3 px-4 text-gray-700">{sp?.initialPosition ?? '-'}</td>
-                        <td className="py-3 px-4 text-gray-500">{sp?.finalPosition ?? '-'}</td>
+                        <td className="py-3 px-4 text-gray-700">{formatLoc(sp?.initialPosition)}</td>
+                        <td className="py-3 px-4 text-gray-500">{sp?.finalPosition ? formatLoc(sp.finalPosition) : '-'}</td>
                         <td className="py-3 px-4">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[rec.status]}`}>
                             {STATUS_ICONS[rec.status]}
