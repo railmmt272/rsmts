@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ClipboardList, Plus, Clock, CheckCircle2, Edit2, Trash2, X } from 'lucide-react-native';
+import { ClipboardList, Plus, Clock, CheckCircle2, Edit2, Trash2, X, Calendar } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import LocationPickerModal from '../../components/LocationPickerModal';
 import ConfirmModal from '../../components/ConfirmModal';
+
+const formatLocalDate = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 interface ShuntingProgram {
   _id: string;
@@ -307,27 +314,37 @@ const ShuntingPrograms = () => {
         
         <View style={styles.dateFilterContainer}>
           <TouchableOpacity 
-            style={styles.dateInputBtn} 
+            style={[styles.dateInputBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} 
             onPress={() => setShowDatePicker('start')}
           >
             <Text style={dateRange.start ? styles.dateInputText : styles.dateInputPlaceholder}>
-              {dateRange.start || 'Start Date'}
+              {dateRange.start ? new Date(dateRange.start + 'T00:00:00').toLocaleDateString('en-GB') : 'Start Date'}
             </Text>
+            <Calendar size={14} color={dateRange.start ? '#0f172a' : '#9ca3af'} />
           </TouchableOpacity>
           <Text style={styles.dateToText}>to</Text>
           <TouchableOpacity 
-            style={styles.dateInputBtn} 
+            style={[styles.dateInputBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} 
             onPress={() => setShowDatePicker('end')}
           >
             <Text style={dateRange.end ? styles.dateInputText : styles.dateInputPlaceholder}>
-              {dateRange.end || 'End Date'}
+              {dateRange.end ? new Date(dateRange.end + 'T00:00:00').toLocaleDateString('en-GB') : 'End Date'}
             </Text>
+            <Calendar size={14} color={dateRange.end ? '#0f172a' : '#9ca3af'} />
           </TouchableOpacity>
+          {(dateRange.start || dateRange.end) && (
+            <TouchableOpacity 
+              onPress={() => setDateRange({ start: '', end: '' })}
+              style={{ marginLeft: 8, paddingHorizontal: 6, paddingVertical: 4 }}
+            >
+              <Text style={{ fontSize: 12, color: '#ef4444', fontWeight: '500' }}>Clear</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {showDatePicker && (
           <DateTimePicker
-            value={showDatePicker === 'start' && dateRange.start ? new Date(dateRange.start) : (showDatePicker === 'end' && dateRange.end ? new Date(dateRange.end) : new Date())}
+            value={showDatePicker === 'start' && dateRange.start ? new Date(dateRange.start + 'T00:00:00') : (showDatePicker === 'end' && dateRange.end ? new Date(dateRange.end + 'T00:00:00') : new Date())}
             mode="date"
             display="default"
             onChange={(event, selectedDate) => {
@@ -336,7 +353,7 @@ const ShuntingPrograms = () => {
                 setShowDatePicker(null);
               }
               if (event.type === 'set' && selectedDate) {
-                const dateStr = selectedDate.toISOString().split('T')[0];
+                const dateStr = formatLocalDate(selectedDate);
                 setDateRange(prev => ({ ...prev, [currentPicker]: dateStr }));
               } else if (event.type === 'dismissed') {
                 setShowDatePicker(null);

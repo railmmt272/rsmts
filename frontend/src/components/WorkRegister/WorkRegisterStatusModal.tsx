@@ -6,10 +6,10 @@ import api from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
 
 const STATUS_OPTIONS = [
-  { value: 'COMPLETED', label: 'Completed', icon: <CheckCircle2 className="w-4 h-4 text-green-600" />, cls: 'border-green-300 bg-green-50 text-green-800' },
-  { value: 'PARTIALLY_COMPLETED', label: 'Partially Completed', icon: <AlertCircle className="w-4 h-4 text-blue-600" />, cls: 'border-blue-300 bg-blue-50 text-blue-800' },
-  { value: 'NOT_COMPLETED', label: 'Not Completed', icon: <XCircle className="w-4 h-4 text-red-600" />, cls: 'border-red-300 bg-red-50 text-red-800' },
-  { value: 'NOT_ATTENDED', label: 'Not Attended', icon: <Clock className="w-4 h-4 text-yellow-600" />, cls: 'border-yellow-300 bg-yellow-50 text-yellow-800' },
+  { value: 'COMPLETED', label: 'Completed', icon: <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />, cls: 'border-green-300 bg-green-50/70 text-green-800' },
+  { value: 'PARTIALLY_COMPLETED', label: 'Partially Completed', icon: <AlertCircle className="w-3.5 h-3.5 text-amber-600" />, cls: 'border-amber-300 bg-amber-50/70 text-amber-800' },
+  { value: 'NOT_COMPLETED', label: 'Not Completed', icon: <XCircle className="w-3.5 h-3.5 text-red-600" />, cls: 'border-red-300 bg-red-50/70 text-red-800' },
+  { value: 'NOT_ATTENDED', label: 'Not Attended', icon: <Clock className="w-3.5 h-3.5 text-slate-500" />, cls: 'border-slate-300 bg-slate-50 text-slate-700' },
 ];
 
 interface WorkRegisterStatusModalProps {
@@ -33,7 +33,7 @@ export default function WorkRegisterStatusModal({ record, onClose, onSuccess }: 
     setSubmitting(true);
     try {
       await api.patch(`/work-registers/${record._id}`, { status: selectedStatus, remark });
-      toast.success('Status updated successfully');
+      toast.success('Shift overall status updated');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -45,38 +45,41 @@ export default function WorkRegisterStatusModal({ record, onClose, onSuccess }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="relative w-full max-w-md rounded-xl bg-white shadow-2xl ring-1 ring-gray-900/5">
+      <div className="relative w-full max-w-sm rounded-xl bg-white shadow-2xl ring-1 ring-gray-900/5">
+        
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Change Status</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Select a new status and optionally add a remark</p>
+            <h3 className="text-sm font-semibold text-gray-900">Update Shift Status</h3>
+            <p className="text-xs text-gray-500">Change overall status for this shift register</p>
           </div>
-          <button onClick={onClose} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 transition-colors">
-            <X className="h-5 w-5" />
+          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 transition-colors">
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3.5">
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">New Status</label>
-            <div className="space-y-2">
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+              Select New Status
+            </label>
+            <div className="space-y-1.5">
               {STATUS_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setSelectedStatus(opt.value)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all text-left ${
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all text-left ${
                     selectedStatus === opt.value
-                      ? `${opt.cls} border-opacity-100`
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? `${opt.cls} border-opacity-100 font-semibold ring-1 ring-gray-900/10`
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   {opt.icon}
-                  {opt.label}
+                  <span>{opt.label}</span>
                   {opt.value === record.status && (
-                    <span className="ml-auto text-xs text-gray-400 font-normal">(current)</span>
+                    <span className="ml-auto text-[10px] text-gray-400 font-normal">(current)</span>
                   )}
                 </button>
               ))}
@@ -84,40 +87,32 @@ export default function WorkRegisterStatusModal({ record, onClose, onSuccess }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Remark <span className="text-gray-400 font-normal">(Optional)</span>
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+              Status Change Remark <span className="text-gray-400 font-normal lowercase">(optional)</span>
             </label>
             <textarea
               value={remark}
               onChange={e => setRemark(e.target.value)}
-              rows={3}
-              placeholder="Reason for status change..."
-              className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm resize-none"
+              rows={2}
+              placeholder="e.g. Completed during shift, handed over..."
+              className="block w-full border border-gray-300 rounded-lg p-2 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none placeholder:text-gray-400"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-1">
+          <div className="flex justify-end gap-2 pt-1 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting || selectedStatus === record.status}
-              className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-gray-900 border border-transparent rounded-lg hover:bg-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-xs"
             >
-              {submitting ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Saving...
-                </>
-              ) : 'Update Status'}
+              {submitting ? 'Updating...' : 'Save Status'}
             </button>
           </div>
         </form>

@@ -7,7 +7,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import ShuntingProgramFormModal from '@/components/ShuntingPrograms/ShuntingProgramFormModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import { Trash2, Edit2 } from 'lucide-react';
+import { Trash2, Edit2, Calendar } from 'lucide-react';
 
 interface ShuntingProgram {
   _id: string;
@@ -177,21 +177,63 @@ export default function ShuntingProgramsPage() {
         <div className="flex gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
-            <input 
-              type="date" 
-              value={dateRange.start} 
-              onChange={e => { setDateRange(prev => ({ ...prev, start: e.target.value })); setCurrentPage(1); }}
-              className="border border-gray-300 rounded-md text-sm p-2 focus:ring-gray-900 focus:border-gray-900"
-            />
+            <div className="relative">
+              <input 
+                type="date" 
+                value={dateRange.start} 
+                onChange={e => { setDateRange(prev => ({ ...prev, start: e.target.value })); setCurrentPage(1); }}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
+                }}
+                onFocus={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Tab') {
+                    e.preventDefault();
+                    try {
+                      (e.target as HTMLInputElement).showPicker?.();
+                    } catch {}
+                  }
+                }}
+                className="border border-gray-300 rounded-md text-sm pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer bg-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+              />
+              <Calendar className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">End Date</label>
-            <input 
-              type="date" 
-              value={dateRange.end} 
-              onChange={e => { setDateRange(prev => ({ ...prev, end: e.target.value })); setCurrentPage(1); }}
-              className="border border-gray-300 rounded-md text-sm p-2 focus:ring-gray-900 focus:border-gray-900"
-            />
+            <div className="relative">
+              <input 
+                type="date" 
+                value={dateRange.end} 
+                onChange={e => { setDateRange(prev => ({ ...prev, end: e.target.value })); setCurrentPage(1); }}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
+                }}
+                onFocus={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Tab') {
+                    e.preventDefault();
+                    try {
+                      (e.target as HTMLInputElement).showPicker?.();
+                    } catch {}
+                  }
+                }}
+                className="border border-gray-300 rounded-md text-sm pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer bg-white [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+              />
+              <Calendar className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         </div>
         {(statusFilter !== 'ALL' || dateRange.start || dateRange.end) && (

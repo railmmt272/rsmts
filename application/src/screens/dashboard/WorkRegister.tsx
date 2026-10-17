@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
-  Modal, TextInput, FlatList, Platform, Pressable
+  Modal, TextInput, FlatList, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  BookOpen, Plus, CheckCircle2, Clock, AlertCircle, XCircle, Edit2, Trash2, X, ChevronDown, ChevronUp, Calendar
+  BookOpen, Plus, CheckCircle2, Clock, AlertCircle, XCircle, Trash2, X,
+  ChevronDown, ChevronUp, Calendar, Circle, MessageSquare, History
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Toast from 'react-native-toast-message';
@@ -16,6 +17,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type WorkStatus = 'COMPLETED' | 'NOT_ATTENDED' | 'PARTIALLY_COMPLETED' | 'NOT_COMPLETED';
+type TodoStatus = 'COMPLETED' | 'PARTIALLY_COMPLETED' | 'NOT_COMPLETED';
 type ShiftType = 'MORNING' | 'STAGGERED' | 'NIGHT';
 
 interface StatusHistoryEntry {
@@ -26,17 +28,14 @@ interface StatusHistoryEntry {
   changedAt: string;
 }
 
-interface ShuntingProgramRef {
+interface TodoItem {
   _id: string;
-  shop: string;
-  rsType: string;
-  rsNo: string;
-  initialPosition: string;
-  finalPosition?: string;
+  task: string;
+  status: TodoStatus;
   remark?: string;
+  updatedBy?: { name: string } | null;
+  updatedAt: string;
 }
-
-const formatLabel = (str?: string) => (str ? str.replace(/_/g, ' ') : '-');
 
 const formatLocalDate = (d: Date): string => {
   const year = d.getFullYear();
@@ -47,11 +46,11 @@ const formatLocalDate = (d: Date): string => {
 
 interface WorkRegister {
   _id: string;
-  shuntingProgram: ShuntingProgramRef;
   date: string;
   shift: ShiftType;
   status: WorkStatus;
   remark?: string;
+  todos: TodoItem[];
   statusHistory: StatusHistoryEntry[];
   createdBy: { name: string } | null;
   createdAt: string;
@@ -72,15 +71,21 @@ const STATUS_LABELS: Record<WorkStatus, string> = {
 
 const STATUS_COLORS: Record<WorkStatus, { bg: string; text: string; border: string }> = {
   COMPLETED: { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
-  NOT_ATTENDED: { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
+  NOT_ATTENDED: { bg: '#f8fafc', text: '#475569', border: '#e2e8f0' },
   PARTIALLY_COMPLETED: { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
   NOT_COMPLETED: { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
 };
 
-const SHIFT_COLORS: Record<ShiftType, { bg: string; text: string }> = {
-  MORNING: { bg: '#fffbeb', text: '#92400e' },
-  STAGGERED: { bg: '#eff6ff', text: '#1e40af' },
-  NIGHT: { bg: '#eef2ff', text: '#3730a3' },
+const SHIFT_COLORS: Record<ShiftType, { bg: string; text: string; border: string }> = {
+  MORNING: { bg: '#fffbeb', text: '#92400e', border: '#fde68a' },
+  STAGGERED: { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe' },
+  NIGHT: { bg: '#eef2ff', text: '#3730a3', border: '#c7d2fe' },
+};
+
+const TODO_PILLS: Record<TodoStatus, { bg: string; text: string; label: string }> = {
+  COMPLETED: { bg: '#d1fae5', text: '#065f46', label: 'Done' },
+  PARTIALLY_COMPLETED: { bg: '#fef3c7', text: '#92400e', label: 'Partial' },
+  NOT_COMPLETED: { bg: '#f1f5f9', text: '#475569', label: 'Pending' },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -91,8 +96,11 @@ const WorkRegister = () => {
 
   const [records, setRecords] = useState<WorkRegister[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const lastTapRef = React.useRef<{ [key: string]: number }>({});
+  const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set());
+
+  // Inline quick task inputs per card
+  const [inlineTaskInputs, setInlineTaskInputs] = useState<Record<string, string>>({});
+  const [addingTaskForId, setAddingTaskForId] = useState<string | null>(null);
 
   // Filters
   const [dateFilter, setDateFilter] = useState('');
@@ -100,196 +108,202 @@ const WorkRegister = () => {
   const [statusFilter, setStatusFilter] = useState<WorkStatus | ''>('');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Form modal state
+  // Form modal state (Register Shift Work)
   const [formVisible, setFormVisible] = useState(false);
-  const [pendingPrograms, setPendingPrograms] = useState<ShuntingProgramRef[]>([]);
-  const [programPickerVisible, setProgramPickerVisible] = useState(false);
-  const [selectedProgramId, setSelectedProgramId] = useState('');
   const [formDate, setFormDate] = useState(formatLocalDate(new Date()));
   const [showFormDatePicker, setShowFormDatePicker] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ShiftType | ''>('');
-  const [selectedStatus, setSelectedStatus] = useState<WorkStatus>('NOT_ATTENDED');
   const [formRemark, setFormRemark] = useState('');
-  const [recordToEdit, setRecordToEdit] = useState<WorkRegister | null>(null);
+  const [newTodos, setNewTodos] = useState<{ id: string; task: string }[]>([]);
+  const [currentTaskInput, setCurrentTaskInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Status change modal
+  // Overall Status change modal
   const [statusModalRecord, setStatusModalRecord] = useState<WorkRegister | null>(null);
   const [newStatus, setNewStatus] = useState<WorkStatus>('NOT_ATTENDED');
   const [statusRemark, setStatusRemark] = useState('');
-  const [statusPickerVisible, setStatusPickerVisible] = useState(false);
-  const [statusSubmitting, setStatusSubmitting] = useState(false);
 
-  // Confirm delete
-  const [confirmConfig, setConfirmConfig] = useState<{
-    visible: boolean; title: string; message: string; onConfirm: () => Promise<void>;
-  }>({ visible: false, title: '', message: '', onConfirm: async () => {} });
+  // Todo status change modal
+  const [todoModalData, setTodoModalData] = useState<{ workRegisterId: string; todo: TodoItem } | null>(null);
+  const [newTodoStatus, setNewTodoStatus] = useState<TodoStatus>('NOT_COMPLETED');
+  const [todoRemark, setTodoRemark] = useState('');
+
+  // Delete modal
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRecords();
   }, [dateFilter, shiftFilter, statusFilter]);
 
   const fetchRecords = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const params = new URLSearchParams({ limit: '200' });
-      if (dateFilter) { params.append('startDate', dateFilter); params.append('endDate', dateFilter); }
+      const params = new URLSearchParams();
+      if (dateFilter) {
+        params.append('startDate', dateFilter);
+        params.append('endDate', dateFilter);
+      }
       if (shiftFilter) params.append('shift', shiftFilter);
       if (statusFilter) params.append('status', statusFilter);
+      params.append('limit', '50');
+
       const res = await api.get(`/work-registers?${params.toString()}`);
-      const data = res.data?.data ?? res.data;
-      setRecords(Array.isArray(data) ? data : []);
+      setRecords(res.data.data || []);
     } catch {
-      Toast.show({ type: 'error', text1: 'Fetch Failed', text2: 'Could not load work register' });
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load work registers' });
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchPendingPrograms = async () => {
-    try {
-      const res = await api.get('/work-registers/pending-programs');
-      setPendingPrograms(res.data);
-    } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Could not load pending programs' });
-    }
-  };
-
-  const toggleCard = (id: string) => {
-    setExpandedCards(prev => {
+  const toggleHistory = (id: string) => {
+    setExpandedHistory(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  const handleCardPress = (id: string) => {
-    const now = Date.now();
-    const last = lastTapRef.current[id] || 0;
-    if (now - last < 300) {
-      toggleCard(id);
-      lastTapRef.current[id] = 0;
-    } else {
-      lastTapRef.current[id] = now;
-    }
-  };
-
   const openAddModal = () => {
-    setRecordToEdit(null);
-    setSelectedProgramId('');
     setFormDate(formatLocalDate(new Date()));
     setSelectedShift('');
-    setSelectedStatus('NOT_ATTENDED');
     setFormRemark('');
-    fetchPendingPrograms();
+    setNewTodos([]);
+    setCurrentTaskInput('');
     setFormVisible(true);
   };
 
-  const openEditModal = (rec: WorkRegister) => {
-    setRecordToEdit(rec);
-    setSelectedProgramId(rec.shuntingProgram._id);
-    setFormDate(rec.date.split('T')[0]);
-    setSelectedShift(rec.shift);
-    setSelectedStatus(rec.status);
-    setFormRemark(rec.remark ?? '');
-    setFormVisible(true);
+  const handleAddTaskToForm = () => {
+    const trimmed = currentTaskInput.trim();
+    if (!trimmed) return;
+    setNewTodos(prev => [...prev, { id: Date.now().toString(), task: trimmed }]);
+    setCurrentTaskInput('');
   };
 
-  const handleFormSubmit = async () => {
+  const handleRemoveTaskFromForm = (id: string) => {
+    setNewTodos(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleCreateRegister = async () => {
     if (!selectedShift) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select a shift' });
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please select a shift' });
       return;
     }
-    if (!recordToEdit && !selectedProgramId) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please select a shunting program' });
+    if (newTodos.length === 0) {
+      Toast.show({ type: 'error', text1: 'Validation', text2: 'Please add at least one To-Do task' });
       return;
     }
+
     setSubmitting(true);
     try {
-      if (recordToEdit) {
-        await api.patch(`/work-registers/${recordToEdit._id}`, { shift: selectedShift, date: formDate, remark: formRemark });
-        Toast.show({ type: 'success', text1: 'Updated', text2: 'Work register updated' });
-      } else {
-        await api.post('/work-registers', {
-          shuntingProgramId: selectedProgramId,
-          date: formDate,
-          shift: selectedShift,
-          status: selectedStatus,
-          remark: formRemark,
-        });
-        Toast.show({ type: 'success', text1: 'Registered', text2: 'Work register created' });
-      }
+      await api.post('/work-registers', {
+        date: formDate,
+        shift: selectedShift,
+        remark: formRemark,
+        todos: newTodos.map(t => ({ task: t.task })),
+      });
+      Toast.show({ type: 'success', text1: 'Created', text2: 'Shift Work Register created' });
       setFormVisible(false);
       fetchRecords();
-    } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Could not save record' });
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.message || 'Could not create register' });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleStatusSubmit = async () => {
-    if (!statusModalRecord || newStatus === statusModalRecord.status) {
-      Toast.show({ type: 'error', text1: 'No Change', text2: 'Please select a different status' });
-      return;
-    }
-    setStatusSubmitting(true);
+  const handleInlineAddTask = async (registerId: string) => {
+    const text = (inlineTaskInputs[registerId] || '').trim();
+    if (!text) return;
+    setAddingTaskForId(registerId);
     try {
-      await api.patch(`/work-registers/${statusModalRecord._id}`, { status: newStatus, remark: statusRemark });
-      Toast.show({ type: 'success', text1: 'Status Updated' });
+      await api.post(`/work-registers/${registerId}/todos`, { task: text });
+      setInlineTaskInputs(prev => ({ ...prev, [registerId]: '' }));
+      Toast.show({ type: 'success', text1: 'Task Added' });
+      fetchRecords();
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.message || 'Failed to add task' });
+    } finally {
+      setAddingTaskForId(null);
+    }
+  };
+
+  const handleUpdateOverallStatus = async () => {
+    if (!statusModalRecord) return;
+    try {
+      await api.patch(`/work-registers/${statusModalRecord._id}`, {
+        status: newStatus,
+        remark: statusRemark,
+      });
+      Toast.show({ type: 'success', text1: 'Updated', text2: 'Shift status updated' });
       setStatusModalRecord(null);
       fetchRecords();
-    } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Could not update status' });
-    } finally {
-      setStatusSubmitting(false);
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.message || 'Could not update status' });
     }
   };
 
-  const openStatusModal = (rec: WorkRegister) => {
-    setStatusModalRecord(rec);
-    setNewStatus(rec.status);
-    setStatusRemark('');
+  const handleUpdateTodoStatus = async () => {
+    if (!todoModalData) return;
+    try {
+      await api.patch(`/work-registers/${todoModalData.workRegisterId}/todos/${todoModalData.todo._id}`, {
+        status: newTodoStatus,
+        remark: todoRemark,
+      });
+      Toast.show({ type: 'success', text1: 'Updated', text2: 'Task status updated' });
+      setTodoModalData(null);
+      fetchRecords();
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.message || 'Failed to update task' });
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setConfirmConfig({
-      visible: true,
-      title: 'Delete Record',
-      message: 'Are you sure you want to delete this work register record? This cannot be undone.',
-      onConfirm: async () => {
-        try {
-          await api.delete(`/work-registers/${id}`);
-          Toast.show({ type: 'success', text1: 'Deleted' });
-          fetchRecords();
-        } catch {
-          Toast.show({ type: 'error', text1: 'Delete Failed' });
-        }
-      },
-    });
+  const handleDeleteTodo = async (registerId: string, todoId: string) => {
+    try {
+      await api.delete(`/work-registers/${registerId}/todos/${todoId}`);
+      Toast.show({ type: 'success', text1: 'Removed', text2: 'Task removed' });
+      fetchRecords();
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Could not delete task' });
+    }
   };
 
-  const selectedProgram = pendingPrograms.find(p => p._id === selectedProgramId);
+  const handleDeleteRegister = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await api.delete(`/work-registers/${deleteConfirmId}`);
+      Toast.show({ type: 'success', text1: 'Deleted', text2: 'Shift register deleted' });
+      setDeleteConfirmId(null);
+      fetchRecords();
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Could not delete shift register' });
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <BookOpen size={26} color="#0f172a" />
-          <View style={{ marginLeft: 10 }}>
-            <Text style={styles.pageTitle}>Work Register</Text>
-            <Text style={styles.pageSubtitle}>Shift-wise task tracking</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={styles.headerIconContainer}>
+            <BookOpen size={18} color="#ffffff" />
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>Work Register</Text>
+            <Text style={styles.headerSubtitle}>Shift To-Do & Task Register</Text>
           </View>
         </View>
+
         {canWrite && (
           <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-            <Plus size={20} color="#fff" />
+            <Plus size={14} color="#ffffff" />
+            <Text style={styles.addBtnText}>Register Work</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Filters */}
+      {/* Filter Section (Date -> Shift -> Status) */}
       <View style={styles.filterSection}>
         {/* Date filter */}
         <View style={styles.dateRow}>
@@ -298,12 +312,12 @@ const WorkRegister = () => {
               <Text style={dateFilter ? styles.dateBtnTextActive : styles.dateBtnText}>
                 {dateFilter ? new Date(dateFilter + 'T00:00:00').toLocaleDateString('en-GB') : 'Filter by Date'}
               </Text>
-              <Calendar size={16} color={dateFilter ? '#0f172a' : '#9ca3af'} />
+              <Calendar size={14} color={dateFilter ? '#0f172a' : '#9ca3af'} />
             </View>
           </TouchableOpacity>
           {dateFilter && (
             <TouchableOpacity onPress={() => setDateFilter('')} style={styles.clearDateBtn}>
-              <X size={14} color="#6b7280" />
+              <Text style={styles.clearDateText}>Clear Date</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -323,191 +337,309 @@ const WorkRegister = () => {
           />
         )}
 
-        {/* Shift filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-          {(['', ...SHIFT_OPTIONS] as Array<ShiftType | ''>).map(s => (
+        {/* Shift Filter */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterTab, !shiftFilter && styles.filterTabActive]}
+            onPress={() => setShiftFilter('')}
+          >
+            <Text style={[styles.filterTabText, !shiftFilter && styles.filterTabTextActive]}>All Shifts</Text>
+          </TouchableOpacity>
+          {SHIFT_OPTIONS.map(s => (
             <TouchableOpacity
               key={s}
               style={[styles.filterTab, shiftFilter === s && styles.filterTabActive]}
               onPress={() => setShiftFilter(s)}
             >
               <Text style={[styles.filterTabText, shiftFilter === s && styles.filterTabTextActive]}>
-                {s ? SHIFT_LABELS[s] : 'All Shifts'}
+                {SHIFT_LABELS[s]}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Status filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
-          {(['', ...STATUS_OPTIONS] as Array<WorkStatus | ''>).map(s => (
+        {/* Status Filter */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterTab, !statusFilter && styles.filterTabActive]}
+            onPress={() => setStatusFilter('')}
+          >
+            <Text style={[styles.filterTabText, !statusFilter && styles.filterTabTextActive]}>All Statuses</Text>
+          </TouchableOpacity>
+          {STATUS_OPTIONS.map(st => (
             <TouchableOpacity
-              key={s}
-              style={[styles.filterTab, statusFilter === s && styles.filterTabActive]}
-              onPress={() => setStatusFilter(s)}
+              key={st}
+              style={[styles.filterTab, statusFilter === st && styles.filterTabActive]}
+              onPress={() => setStatusFilter(st)}
             >
-              <Text style={[styles.filterTabText, statusFilter === s && styles.filterTabTextActive]}>
-                {s ? STATUS_LABELS[s] : 'All Status'}
+              <Text style={[styles.filterTabText, statusFilter === st && styles.filterTabTextActive]}>
+                {STATUS_LABELS[st]}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* List */}
+      {/* Main List */}
       {loading ? (
-        <ActivityIndicator size="large" color="#0284c7" style={{ marginTop: 40 }} />
+        <View style={styles.center}>
+          <ActivityIndicator size="small" color="#0f172a" />
+        </View>
+      ) : records.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <BookOpen size={36} color="#cbd5e1" />
+          <Text style={styles.emptyTitle}>No Work Registers Found</Text>
+          <Text style={styles.emptySubtitle}>
+            {canWrite ? 'Tap "Register Work" to assign tasks for a shift' : 'No registers match current filters'}
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={records}
           keyExtractor={item => item._id}
-          contentContainerStyle={{ padding: 16 }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No work register records found.</Text>}
-          onRefresh={fetchRecords}
-          refreshing={loading}
+          contentContainerStyle={styles.listContent}
           renderItem={({ item }) => {
-            const isExpanded = expandedCards.has(item._id);
-            const sp = item.shuntingProgram;
-            const sc = STATUS_COLORS[item.status];
-            const shiftC = SHIFT_COLORS[item.shift];
+            const totalTodos = item.todos?.length || 0;
+            const completedTodos = item.todos?.filter(t => t.status === 'COMPLETED').length || 0;
+            const progress = totalTodos > 0 ? (completedTodos / totalTodos) : 0;
+            const isHistoryOpen = expandedHistory.has(item._id);
+            const statusConfig = STATUS_COLORS[item.status] || STATUS_COLORS.NOT_ATTENDED;
+            const shiftConfig = SHIFT_COLORS[item.shift] || SHIFT_COLORS.MORNING;
+
             return (
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => handleCardPress(item._id)}
-                style={styles.card}
-              >
-                {/* Card Header */}
+              <View style={styles.card}>
+                {/* Top Row: Date, Shift, Overall Status, Progress */}
                 <View style={styles.cardHeader}>
                   <View style={styles.cardHeaderLeft}>
-                    <View style={[styles.shiftBadge, { backgroundColor: shiftC.bg }]}>
-                      <Text style={[styles.shiftBadgeText, { color: shiftC.text }]}>{SHIFT_LABELS[item.shift]}</Text>
+                    <View style={styles.dateBadge}>
+                      <Calendar size={12} color="#0f172a" />
+                      <Text style={styles.cardDate}>
+                        {new Date(item.date).toLocaleDateString('en-GB')}
+                      </Text>
                     </View>
-                    <Text style={styles.cardDate}>{new Date(item.date).toLocaleDateString('en-GB')}</Text>
+
+                    <View style={[styles.shiftBadge, { backgroundColor: shiftConfig.bg, borderColor: shiftConfig.border }]}>
+                      <Text style={[styles.shiftBadgeText, { color: shiftConfig.text }]}>
+                        {SHIFT_LABELS[item.shift]}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg, borderColor: statusConfig.border }]}>
+                      <Text style={[styles.statusBadgeText, { color: statusConfig.text }]}>
+                        {STATUS_LABELS[item.status]}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: sc.bg, borderColor: sc.border }]}>
-                    <Text style={[styles.statusBadgeText, { color: sc.text }]}>{STATUS_LABELS[item.status]}</Text>
+
+                  {/* Actions */}
+                  <View style={styles.cardActions}>
+                    {canWrite && (
+                      <>
+                        <TouchableOpacity
+                          style={styles.changeStatusBtn}
+                          onPress={() => {
+                            setStatusModalRecord(item);
+                            setNewStatus(item.status);
+                            setStatusRemark('');
+                          }}
+                        >
+                          <Text style={styles.changeStatusBtnText}>Status</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setDeleteConfirmId(item._id)}
+                          style={styles.trashBtn}
+                        >
+                          <Trash2 size={13} color="#94a3b8" />
+                        </TouchableOpacity>
+                      </>
+                    )}
                   </View>
                 </View>
 
-                {/* Card Body */}
-                <View style={styles.cardBody}>
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Shop:</Text><Text style={styles.infoValue}>{sp?.shop ?? '-'}</Text></View>
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>RS Type:</Text><Text style={styles.infoValue}>{formatLabel(sp?.rsType)}</Text></View>
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>RS No:</Text><Text style={styles.infoValue}>{sp?.rsNo ?? '-'}</Text></View>
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Initial Pos:</Text><Text style={styles.infoValue}>{formatLabel(sp?.initialPosition)}</Text></View>
-                  {sp?.finalPosition && (
-                    <View style={styles.infoRow}><Text style={styles.infoLabel}>Final Pos:</Text><Text style={styles.infoValue}>{formatLabel(sp.finalPosition)}</Text></View>
+                {/* Progress bar */}
+                <View style={styles.progressContainer}>
+                  <Text style={styles.progressText}>
+                    {completedTodos}/{totalTodos} Tasks Done
+                  </Text>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${Math.round(progress * 100)}%` }]} />
+                  </View>
+                </View>
+
+                {/* Optional Shift Notes */}
+                {item.remark ? (
+                  <View style={styles.shiftNoteBox}>
+                    <MessageSquare size={12} color="#b45309" />
+                    <Text style={styles.shiftNoteText}>{item.remark}</Text>
+                  </View>
+                ) : null}
+
+                {/* Checklist Section */}
+                <View style={styles.todoList}>
+                  {totalTodos === 0 ? (
+                    <Text style={styles.noTodosText}>No tasks added to this shift yet.</Text>
+                  ) : (
+                    item.todos.map((todo, idx) => {
+                      const pill = TODO_PILLS[todo.status] || TODO_PILLS.NOT_COMPLETED;
+                      const isDone = todo.status === 'COMPLETED';
+
+                      return (
+                        <View
+                          key={todo._id}
+                          style={[
+                            styles.todoItem,
+                            isDone && styles.todoItemDone,
+                          ]}
+                        >
+                          {/* Task Number & Icon */}
+                          <View style={styles.todoLeft}>
+                            <Text style={styles.todoIndex}>#{idx + 1}</Text>
+                            {todo.status === 'COMPLETED' ? (
+                              <CheckCircle2 size={14} color="#059669" />
+                            ) : todo.status === 'PARTIALLY_COMPLETED' ? (
+                              <AlertCircle size={14} color="#d97706" />
+                            ) : (
+                              <Circle size={14} color="#cbd5e1" />
+                            )}
+                            <View style={{ flex: 1 }}>
+                              <Text
+                                style={[
+                                  styles.todoTaskText,
+                                  isDone && styles.todoTaskTextDone,
+                                ]}
+                              >
+                                {todo.task}
+                              </Text>
+                              {todo.remark ? (
+                                <Text style={styles.todoRemarkText}>Note: {todo.remark}</Text>
+                              ) : null}
+                            </View>
+                          </View>
+
+                          {/* Status Pill & Delete */}
+                          <View style={styles.todoRight}>
+                            {canWrite ? (
+                              <TouchableOpacity
+                                style={[styles.todoPillBtn, { backgroundColor: pill.bg }]}
+                                onPress={() => {
+                                  setTodoModalData({ workRegisterId: item._id, todo });
+                                  setNewTodoStatus(todo.status);
+                                  setTodoRemark(todo.remark || '');
+                                }}
+                              >
+                                <Text style={[styles.todoPillText, { color: pill.text }]}>{pill.label}</Text>
+                              </TouchableOpacity>
+                            ) : (
+                              <View style={[styles.todoPillBtn, { backgroundColor: pill.bg }]}>
+                                <Text style={[styles.todoPillText, { color: pill.text }]}>{pill.label}</Text>
+                              </View>
+                            )}
+
+                            {canWrite && (
+                              <TouchableOpacity
+                                onPress={() => handleDeleteTodo(item._id, todo._id)}
+                                style={styles.todoTrashBtn}
+                              >
+                                <Trash2 size={12} color="#cbd5e1" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+
+                  {/* Inline Task Adder */}
+                  {canWrite && (
+                    <View style={styles.inlineAddRow}>
+                      <TextInput
+                        value={inlineTaskInputs[item._id] || ''}
+                        onChangeText={txt => setInlineTaskInputs(prev => ({ ...prev, [item._id]: txt }))}
+                        placeholder="+ Add task to this shift..."
+                        placeholderTextColor="#94a3b8"
+                        style={styles.inlineInput}
+                      />
+                      <TouchableOpacity
+                        style={[
+                          styles.inlineAddBtn,
+                          (!(inlineTaskInputs[item._id] || '').trim() || addingTaskForId === item._id) && styles.inlineAddBtnDisabled,
+                        ]}
+                        disabled={!(inlineTaskInputs[item._id] || '').trim() || addingTaskForId === item._id}
+                        onPress={() => handleInlineAddTask(item._id)}
+                      >
+                        <Text style={styles.inlineAddBtnText}>
+                          {addingTaskForId === item._id ? '...' : 'Add'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
 
-                {/* Expanded: Status History */}
-                {isExpanded && (
-                  <View style={styles.historySection}>
-                    <Text style={styles.historyTitle}>Status History</Text>
-                    {item.statusHistory.length === 0 ? (
-                      <Text style={styles.historyEmpty}>No history recorded.</Text>
-                    ) : (
-                      item.statusHistory.map((entry, i) => {
-                        const ec = STATUS_COLORS[entry.status];
-                        return (
-                          <View key={entry._id ?? i} style={styles.historyEntry}>
-                            <View style={styles.historyDot} />
-                            <View style={styles.historyContent}>
-                              <View style={[styles.historyStatusBadge, { backgroundColor: ec.bg, borderColor: ec.border }]}>
-                                <Text style={[styles.historyStatusText, { color: ec.text }]}>{STATUS_LABELS[entry.status]}</Text>
-                              </View>
-                              <Text style={styles.historyMeta}>
-                                {new Date(entry.changedAt).toLocaleString('en-GB')}
-                                {entry.changedBy ? `  ·  ${entry.changedBy.name}` : ''}
-                              </Text>
-                              {entry.remark ? <Text style={styles.historyRemark}>{entry.remark}</Text> : null}
+                {/* Audit History Accordion */}
+                {item.statusHistory && item.statusHistory.length > 0 && (
+                  <View style={styles.historyContainer}>
+                    <TouchableOpacity
+                      style={styles.historyToggle}
+                      onPress={() => toggleHistory(item._id)}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <History size={12} color="#64748b" />
+                        <Text style={styles.historyToggleText}>
+                          Audit Trail ({item.statusHistory.length})
+                        </Text>
+                      </View>
+                      {isHistoryOpen ? <ChevronUp size={12} color="#64748b" /> : <ChevronDown size={12} color="#64748b" />}
+                    </TouchableOpacity>
+
+                    {isHistoryOpen && (
+                      <View style={styles.historyList}>
+                        {item.statusHistory.map((h, i) => (
+                          <View key={h._id || i} style={styles.historyEntry}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                              <Text style={styles.historyStatus}>{STATUS_LABELS[h.status] || h.status}</Text>
+                              {h.remark ? <Text style={styles.historyRemark}>- {h.remark}</Text> : null}
                             </View>
+                            <Text style={styles.historyMeta}>
+                              {h.changedBy?.name || 'User'} &bull; {new Date(h.changedAt).toLocaleString('en-GB')}
+                            </Text>
                           </View>
-                        );
-                      })
+                        ))}
+                      </View>
                     )}
                   </View>
                 )}
 
-                {/* Card Footer Actions */}
-                <View style={styles.cardActions}>
-                  <TouchableOpacity onPress={() => toggleCard(item._id)} style={styles.expandBtn}>
-                    {isExpanded ? <ChevronUp size={16} color="#6b7280" /> : <ChevronDown size={16} color="#6b7280" />}
-                    <Text style={styles.expandBtnText}>{isExpanded ? 'Hide History' : 'Show History'}</Text>
-                  </TouchableOpacity>
-                  {canWrite && (
-                    <View style={styles.actionBtns}>
-                      <TouchableOpacity style={styles.statusBtn} onPress={() => openStatusModal(item)}>
-                        <Text style={styles.statusBtnText}>Status</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.iconBtn} onPress={() => openEditModal(item)}>
-                        <Edit2 size={18} color="#0284c7" />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.iconBtn} onPress={() => handleDelete(item._id)}>
-                        <Trash2 size={18} color="#dc2626" />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
+              </View>
             );
           }}
         />
       )}
 
-      {/* ─── Add / Edit Modal ─────────────────────────────────────── */}
-      <Modal visible={formVisible} transparent animationType="slide" onRequestClose={() => setFormVisible(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setFormVisible(false)}>
-          <Pressable style={styles.modalContainer} onPress={e => e.stopPropagation()}>
+      {/* Modal: Register Shift Work (Create) */}
+      <Modal visible={formVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{recordToEdit ? 'Edit Work Register' : 'Register Work'}</Text>
+              <View>
+                <Text style={styles.modalTitle}>Register Shift Work</Text>
+                <Text style={styles.modalSubtitle}>Assign To-Do tasks for a shift</Text>
+              </View>
               <TouchableOpacity onPress={() => setFormVisible(false)} style={styles.closeBtn}>
-                <X size={22} color="#64748b" />
+                <X size={16} color="#64748b" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-              {/* Program selector */}
-              {!recordToEdit && (
-                <>
-                  <Text style={styles.inputLabel}>Pending Shunting Program *</Text>
-                  <TouchableOpacity style={styles.dropdownInput} onPress={() => setProgramPickerVisible(true)}>
-                    <Text style={selectedProgramId ? styles.inputText : styles.placeholderText}>
-                      {selectedProgram
-                        ? `[${selectedProgram.shop}] ${selectedProgram.rsNo} — ${formatLabel(selectedProgram.rsType)}`
-                        : 'Select program...'}
-                    </Text>
-                  </TouchableOpacity>
-                  {selectedProgram && (
-                    <View style={styles.selectedProgramInfo}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Program Details</Text>
-                        <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#f1f5f9' }}>
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#334155' }}>{selectedProgram.shop}</Text>
-                        </View>
-                      </View>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }}>RS No: {selectedProgram.rsNo} ({formatLabel(selectedProgram.rsType)})</Text>
-                      <Text style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
-                        Route: {formatLabel(selectedProgram.initialPosition)}{selectedProgram.finalPosition ? ` → ${formatLabel(selectedProgram.finalPosition)}` : ''}
-                      </Text>
-                      {selectedProgram.remark ? (
-                        <Text style={{ fontSize: 11, fontStyle: 'italic', color: '#64748b', marginTop: 4 }}>Note: {selectedProgram.remark}</Text>
-                      ) : null}
-                    </View>
-                  )}
-                </>
-              )}
-
+            <ScrollView style={styles.modalBody}>
               {/* Date */}
               <Text style={styles.inputLabel}>Date *</Text>
               <TouchableOpacity
-                style={[styles.dropdownInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                style={styles.dropdownInput}
                 onPress={() => setShowFormDatePicker(true)}
               >
                 <Text style={styles.inputText}>
                   {new Date(formDate + 'T00:00:00').toLocaleDateString('en-GB')}
                 </Text>
-                <Calendar size={18} color="#64748b" />
+                <Calendar size={14} color="#64748b" />
               </TouchableOpacity>
               {showFormDatePicker && (
                 <DateTimePicker
@@ -524,195 +656,210 @@ const WorkRegister = () => {
 
               {/* Shift */}
               <Text style={styles.inputLabel}>Shift *</Text>
-              <View style={styles.shiftRow}>
+              <View style={styles.shiftBtnRow}>
                 {SHIFT_OPTIONS.map(s => (
                   <TouchableOpacity
                     key={s}
-                    style={[styles.shiftOption, selectedShift === s && styles.shiftOptionActive]}
+                    style={[styles.shiftSelectBtn, selectedShift === s && styles.shiftSelectBtnActive]}
                     onPress={() => setSelectedShift(s)}
                   >
-                    <Text style={[styles.shiftOptionText, selectedShift === s && styles.shiftOptionTextActive]}>
+                    <Text style={[styles.shiftSelectBtnText, selectedShift === s && styles.shiftSelectBtnTextActive]}>
                       {SHIFT_LABELS[s]}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              {/* Status (create only) */}
-              {!recordToEdit && (
-                <>
-                  <Text style={styles.inputLabel}>Initial Status</Text>
-                  <TouchableOpacity style={styles.dropdownInput} onPress={() => setStatusPickerVisible(true)}>
-                    <Text style={styles.inputText}>{STATUS_LABELS[selectedStatus]}</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+              {/* Tasks Builder */}
+              <View style={styles.tasksBox}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={styles.inputLabel}>Shift Tasks ({newTodos.length})</Text>
+                </View>
 
-              {/* Remark */}
-              <Text style={styles.inputLabel}>Remarks (Optional)</Text>
+                {/* Input row */}
+                <View style={styles.taskInputRow}>
+                  <TextInput
+                    value={currentTaskInput}
+                    onChangeText={setCurrentTaskInput}
+                    placeholder="Task (e.g. Shunt wagon to Track 3)..."
+                    placeholderTextColor="#94a3b8"
+                    style={styles.taskInput}
+                  />
+                  <TouchableOpacity
+                    style={[styles.taskAddBtn, !currentTaskInput.trim() && styles.taskAddBtnDisabled]}
+                    disabled={!currentTaskInput.trim()}
+                    onPress={handleAddTaskToForm}
+                  >
+                    <Plus size={14} color="#ffffff" />
+                    <Text style={styles.taskAddBtnText}>Add</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* List of tasks */}
+                {newTodos.length === 0 ? (
+                  <Text style={styles.noTasksAdded}>No tasks added yet. Write above and tap Add.</Text>
+                ) : (
+                  newTodos.map((t, index) => (
+                    <View key={t.id} style={styles.newTodoItem}>
+                      <Text style={styles.newTodoNumber}>#{index + 1}</Text>
+                      <Text style={styles.newTodoText}>{t.task}</Text>
+                      <TouchableOpacity onPress={() => handleRemoveTaskFromForm(t.id)}>
+                        <Trash2 size={13} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+              </View>
+
+              {/* Shift Notes */}
+              <Text style={styles.inputLabel}>Shift Notes (Optional)</Text>
               <TextInput
-                style={[styles.textInput, styles.textArea]}
-                placeholder="Add any notes..."
                 value={formRemark}
                 onChangeText={setFormRemark}
-                placeholderTextColor="#9ca3af"
+                placeholder="Handover instructions or notes..."
+                placeholderTextColor="#94a3b8"
                 multiline
-                numberOfLines={3}
+                numberOfLines={2}
+                style={[styles.textInput, { height: 50, textAlignVertical: 'top' }]}
               />
 
-              <TouchableOpacity
-                style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
-                onPress={handleFormSubmit}
-                disabled={submitting}
-              >
-                {submitting
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.submitBtnText}>{recordToEdit ? 'Save Changes' : 'Register Work'}</Text>
-                }
-              </TouchableOpacity>
+              {/* Note: Overall Status is HIDDEN per client request */}
+              <Text style={styles.hiddenStatusNotice}>
+                Initial shift status: <Text style={{ fontWeight: '700' }}>Not Attended</Text>
+              </Text>
             </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
 
-      {/* ─── Program Picker ─────────────────────────────────────────── */}
-      <Modal visible={programPickerVisible} transparent animationType="slide" onRequestClose={() => setProgramPickerVisible(false)}>
-        <View style={styles.pickerOverlay}>
-          <View style={styles.pickerContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Pending Program</Text>
-              <TouchableOpacity onPress={() => setProgramPickerVisible(false)} style={styles.closeBtn}>
-                <X size={22} color="#64748b" />
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setFormVisible(false)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.submitBtn, (submitting || newTodos.length === 0 || !selectedShift) && styles.submitBtnDisabled]}
+                disabled={submitting || newTodos.length === 0 || !selectedShift}
+                onPress={handleCreateRegister}
+              >
+                <Text style={styles.submitBtnText}>
+                  {submitting ? 'Creating...' : 'Create Register'}
+                </Text>
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={pendingPrograms}
-              keyExtractor={item => item._id}
-              ListEmptyComponent={<Text style={styles.emptyText}>No pending programs.</Text>}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.pickerItem, selectedProgramId === item._id && styles.pickerItemSelected]}
-                  onPress={() => { setSelectedProgramId(item._id); setProgramPickerVisible(false); }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#f1f5f9' }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569' }}>{item.shop}</Text>
-                      </View>
-                      <Text style={[styles.pickerItemText, selectedProgramId === item._id && styles.pickerItemTextSelected]}>
-                        RS No: {item.rsNo}
-                      </Text>
-                    </View>
-                    <Text style={{ fontSize: 12, color: '#64748b' }}>({formatLabel(item.rsType)})</Text>
-                  </View>
-                  <Text style={styles.pickerItemSub}>
-                    {formatLabel(item.initialPosition)}{item.finalPosition ? ` → ${formatLabel(item.finalPosition)}` : ''}
-                  </Text>
-                  {item.remark ? (
-                    <Text style={{ fontSize: 11, fontStyle: 'italic', color: '#94a3b8', marginTop: 3 }}>
-                      Note: {item.remark}
-                    </Text>
-                  ) : null}
-                </TouchableOpacity>
-              )}
-            />
           </View>
         </View>
       </Modal>
 
-      {/* ─── Status Picker (for form initial status) ───────────────── */}
-      <Modal visible={statusPickerVisible} transparent animationType="slide" onRequestClose={() => setStatusPickerVisible(false)}>
-        <View style={styles.pickerOverlay}>
-          <View style={styles.pickerContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Initial Status</Text>
-              <TouchableOpacity onPress={() => setStatusPickerVisible(false)} style={styles.closeBtn}>
-                <X size={22} color="#64748b" />
+      {/* Modal: Change Overall Shift Status */}
+      <Modal visible={!!statusModalRecord} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBoxSmall}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Shift Status</Text>
+              <TouchableOpacity onPress={() => setStatusModalRecord(null)} style={styles.closeBtn}>
+                <X size={16} color="#64748b" />
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={STATUS_OPTIONS}
-              keyExtractor={item => item}
-              renderItem={({ item }) => (
+
+            <View style={styles.modalBodySmall}>
+              <Text style={styles.inputLabel}>New Status</Text>
+              {STATUS_OPTIONS.map(st => (
                 <TouchableOpacity
-                  style={[styles.pickerItem, selectedStatus === item && styles.pickerItemSelected]}
-                  onPress={() => { setSelectedStatus(item); setStatusPickerVisible(false); }}
+                  key={st}
+                  style={[styles.statusOptionBtn, newStatus === st && styles.statusOptionBtnActive]}
+                  onPress={() => setNewStatus(st)}
                 >
-                  <Text style={[styles.pickerItemText, selectedStatus === item && styles.pickerItemTextSelected]}>
-                    {STATUS_LABELS[item]}
+                  <Text style={[styles.statusOptionBtnText, newStatus === st && styles.statusOptionBtnTextActive]}>
+                    {STATUS_LABELS[st]}
                   </Text>
+                  {statusModalRecord?.status === st && (
+                    <Text style={{ fontSize: 10, color: '#94a3b8' }}>(current)</Text>
+                  )}
                 </TouchableOpacity>
-              )}
-            />
+              ))}
+
+              <Text style={[styles.inputLabel, { marginTop: 10 }]}>Remark (Optional)</Text>
+              <TextInput
+                value={statusRemark}
+                onChangeText={setStatusRemark}
+                placeholder="Reason for change..."
+                placeholderTextColor="#94a3b8"
+                style={styles.textInput}
+              />
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setStatusModalRecord(null)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.submitBtn} onPress={handleUpdateOverallStatus}>
+                <Text style={styles.submitBtnText}>Save Status</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
 
-      {/* ─── Status Change Modal ─────────────────────────────────────── */}
-      {statusModalRecord && (
-        <Modal visible={!!statusModalRecord} transparent animationType="slide" onRequestClose={() => setStatusModalRecord(null)}>
-          <Pressable style={styles.modalOverlay} onPress={() => setStatusModalRecord(null)}>
-            <Pressable style={[styles.modalContainer, { maxHeight: '70%' }]} onPress={e => e.stopPropagation()}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Change Status</Text>
-                <TouchableOpacity onPress={() => setStatusModalRecord(null)} style={styles.closeBtn}>
-                  <X size={22} color="#64748b" />
-                </TouchableOpacity>
+      {/* Modal: Update Specific To-Do Status */}
+      <Modal visible={!!todoModalData} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBoxSmall}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Update Task Status</Text>
+                <Text style={styles.modalSubtitle} numberOfLines={1}>{todoModalData?.todo.task}</Text>
               </View>
-              <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
-                <Text style={styles.inputLabel}>New Status</Text>
-                {STATUS_OPTIONS.map(s => {
-                  const sc = STATUS_COLORS[s];
-                  return (
-                    <TouchableOpacity
-                      key={s}
-                      style={[styles.statusOptionBtn, newStatus === s && { borderColor: sc.border, backgroundColor: sc.bg }]}
-                      onPress={() => setNewStatus(s)}
-                    >
-                      <Text style={[styles.statusOptionText, newStatus === s && { color: sc.text }]}>
-                        {STATUS_LABELS[s]}
-                      </Text>
-                      {s === statusModalRecord.status && (
-                        <Text style={styles.currentTag}>(current)</Text>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
+              <TouchableOpacity onPress={() => setTodoModalData(null)} style={styles.closeBtn}>
+                <X size={16} color="#64748b" />
+              </TouchableOpacity>
+            </View>
 
-                <Text style={[styles.inputLabel, { marginTop: 16 }]}>Remark (Optional)</Text>
-                <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  placeholder="Reason for status change..."
-                  value={statusRemark}
-                  onChangeText={setStatusRemark}
-                  placeholderTextColor="#9ca3af"
-                  multiline
-                  numberOfLines={3}
-                />
+            <View style={styles.modalBodySmall}>
+              <Text style={styles.inputLabel}>Status</Text>
+              {(['COMPLETED', 'PARTIALLY_COMPLETED', 'NOT_COMPLETED'] as TodoStatus[]).map(ts => {
+                const pill = TODO_PILLS[ts];
+                return (
+                  <TouchableOpacity
+                    key={ts}
+                    style={[styles.statusOptionBtn, newTodoStatus === ts && styles.statusOptionBtnActive]}
+                    onPress={() => setNewTodoStatus(ts)}
+                  >
+                    <Text style={[styles.statusOptionBtnText, newTodoStatus === ts && styles.statusOptionBtnTextActive]}>
+                      {pill.label}
+                    </Text>
+                    {todoModalData?.todo.status === ts && (
+                      <Text style={{ fontSize: 10, color: '#94a3b8' }}>(current)</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
 
-                <TouchableOpacity
-                  style={[styles.submitBtn, (statusSubmitting || newStatus === statusModalRecord.status) && styles.submitBtnDisabled]}
-                  onPress={handleStatusSubmit}
-                  disabled={statusSubmitting || newStatus === statusModalRecord.status}
-                >
-                  {statusSubmitting
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.submitBtnText}>Update Status</Text>
-                  }
-                </TouchableOpacity>
-              </ScrollView>
-            </Pressable>
-          </Pressable>
-        </Modal>
-      )}
+              <Text style={[styles.inputLabel, { marginTop: 10 }]}>Remark / Note (Optional)</Text>
+              <TextInput
+                value={todoRemark}
+                onChangeText={setTodoRemark}
+                placeholder="e.g. Completed with shunter..."
+                placeholderTextColor="#94a3b8"
+                style={styles.textInput}
+              />
+            </View>
 
-      {/* Confirm modal */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setTodoModalData(null)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.submitBtn} onPress={handleUpdateTodoStatus}>
+                <Text style={styles.submitBtnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
-        visible={confirmConfig.visible}
-        onClose={() => setConfirmConfig(prev => ({ ...prev, visible: false }))}
-        onConfirm={confirmConfig.onConfirm}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
+        visible={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={handleDeleteRegister}
+        title="Delete Shift Register"
+        message="Are you sure you want to delete this shift register and all its To-Do tasks?"
         confirmText="Delete"
         variant="danger"
       />
@@ -720,86 +867,356 @@ const WorkRegister = () => {
   );
 };
 
+// ─── Styles (Clean, Compact, Smaller Text Sizes) ──────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  pageTitle: { fontSize: 20, fontWeight: '700', color: '#0f172a' },
-  pageSubtitle: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  addBtn: { backgroundColor: '#0f172a', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
-  filterSection: { backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dateBtn: { flex: 1, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  dateBtnText: { fontSize: 13, color: '#9ca3af' },
-  dateBtnTextActive: { fontSize: 13, color: '#0f172a', fontWeight: '500' },
-  clearDateBtn: { padding: 6 },
-  filterTab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#cbd5e1', marginRight: 8 },
-  filterTabActive: { backgroundColor: '#0f172a', borderColor: '#0f172a' },
-  filterTabText: { fontSize: 12, fontWeight: '600', color: '#475569' },
-  filterTabTextActive: { color: '#fff' },
-  emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 40, fontSize: 15 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  shiftBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
-  shiftBadgeText: { fontSize: 11, fontWeight: '700' },
-  cardDate: { fontSize: 12, color: '#94a3b8', fontWeight: '500' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
-  statusBadgeText: { fontSize: 11, fontWeight: '600' },
-  cardBody: { marginBottom: 12 },
-  infoRow: { flexDirection: 'row', marginBottom: 3 },
-  infoLabel: { fontSize: 12, fontWeight: '600', color: '#64748b', width: 80 },
-  infoValue: { fontSize: 12, color: '#0f172a', flex: 1 },
-  historySection: { backgroundColor: '#f8fafc', borderRadius: 8, padding: 12, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: '#3b82f6' },
-  historyTitle: { fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-  historyEmpty: { fontSize: 12, color: '#9ca3af' },
-  historyEntry: { flexDirection: 'row', marginBottom: 10 },
-  historyDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#94a3b8', marginTop: 4, marginRight: 10 },
-  historyContent: { flex: 1, backgroundColor: '#fff', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#e2e8f0' },
-  historyStatusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, marginBottom: 4 },
-  historyStatusText: { fontSize: 11, fontWeight: '600' },
-  historyMeta: { fontSize: 11, color: '#9ca3af' },
-  historyRemark: { fontSize: 12, color: '#475569', marginTop: 4 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10 },
-  expandBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  expandBtnText: { fontSize: 12, color: '#6b7280' },
-  actionBtns: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  statusBtn: { backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
-  statusBtnText: { fontSize: 12, fontWeight: '600', color: '#374151' },
-  iconBtn: { padding: 4 },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContainer: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: '#0f172a' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  headerIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 7,
+    backgroundColor: '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
+  headerSubtitle: { fontSize: 11, color: '#64748b' },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 7,
+  },
+  addBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
+
+  // Filters
+  filterSection: {
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dateBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  dateBtnText: { fontSize: 12, color: '#94a3b8' },
+  dateBtnTextActive: { fontSize: 12, color: '#0f172a', fontWeight: '600' },
+  clearDateBtn: { paddingHorizontal: 6, paddingVertical: 4 },
+  clearDateText: { fontSize: 11, color: '#ef4444', fontWeight: '500' },
+  filterRow: { gap: 4, alignItems: 'center' },
+  filterTab: {
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 5,
+    backgroundColor: '#f1f5f9',
+  },
+  filterTabActive: { backgroundColor: '#0f172a' },
+  filterTabText: { fontSize: 11, fontWeight: '600', color: '#475569' },
+  filterTabTextActive: { color: '#ffffff' },
+
+  // Center / Empty
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emptyTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a', marginTop: 10 },
+  emptySubtitle: { fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 4 },
+
+  // List & Cards
+  listContent: { padding: 10, gap: 10 },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    backgroundColor: '#f8fafc',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap', flex: 1 },
+  dateBadge: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  cardDate: { fontSize: 12, fontWeight: '700', color: '#0f172a' },
+  shiftBadge: { paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 4, borderWidth: 1 },
+  shiftBadgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
+  statusBadge: { paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 4, borderWidth: 1 },
+  statusBadgeText: { fontSize: 9, fontWeight: '700' },
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  changeStatusBtn: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    backgroundColor: '#ffffff',
+  },
+  changeStatusBtnText: { fontSize: 10, fontWeight: '600', color: '#334155' },
+  trashBtn: { padding: 4 },
+
+  // Progress
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  progressText: { fontSize: 10.5, fontWeight: '600', color: '#64748b' },
+  progressBarBg: { width: 90, height: 4.5, backgroundColor: '#e2e8f0', borderRadius: 3, overflow: 'hidden' },
+  progressBarFill: { height: '100%', backgroundColor: '#059669', borderRadius: 3 },
+
+  // Shift Note
+  shiftNoteBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#fefce8',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#fef08a',
+  },
+  shiftNoteText: { fontSize: 11, color: '#92400e', fontStyle: 'italic', flex: 1 },
+
+  // Todo list
+  todoList: { padding: 8, gap: 5 },
+  noTodosText: { fontSize: 11, color: '#94a3b8', textAlign: 'center', paddingVertical: 6 },
+  todoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    gap: 6,
+  },
+  todoItemDone: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+  todoLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, flex: 1 },
+  todoIndex: { fontSize: 9.5, fontWeight: '700', color: '#94a3b8', marginTop: 1 },
+  todoTaskText: { fontSize: 11.5, fontWeight: '500', color: '#0f172a' },
+  todoTaskTextDone: { color: '#64748b', textDecorationLine: 'line-through' },
+  todoRemarkText: { fontSize: 10, color: '#64748b', fontStyle: 'italic', marginTop: 1 },
+  todoRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  todoPillBtn: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
+  todoPillText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
+  todoTrashBtn: { padding: 2 },
+
+  // Inline Add
+  inlineAddRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 3 },
+  inlineInput: {
+    flex: 1,
+    height: 28,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    fontSize: 11,
+    backgroundColor: '#f8fafc',
+    color: '#0f172a',
+  },
+  inlineAddBtn: {
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 8,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlineAddBtnDisabled: { opacity: 0.4 },
+  inlineAddBtnText: { color: '#ffffff', fontSize: 11, fontWeight: '600' },
+
+  // History Accordion
+  historyContainer: { borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  historyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: '#f8fafc',
+  },
+  historyToggleText: { fontSize: 10, fontWeight: '600', color: '#64748b' },
+  historyList: { paddingHorizontal: 10, paddingBottom: 6, gap: 3 },
+  historyEntry: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  historyStatus: { fontSize: 10, fontWeight: '700', color: '#0f172a' },
+  historyRemark: { fontSize: 10, color: '#64748b', fontStyle: 'italic' },
+  historyMeta: { fontSize: 9, color: '#94a3b8' },
+
+  // Modals
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 14 },
+  modalBox: { backgroundColor: '#ffffff', borderRadius: 12, maxHeight: '88%', overflow: 'hidden' },
+  modalBoxSmall: { backgroundColor: '#ffffff', borderRadius: 12, overflow: 'hidden' },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  modalSubtitle: { fontSize: 10.5, color: '#64748b', marginTop: 1 },
   closeBtn: { padding: 4 },
-  modalBody: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
-  dropdownInput: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14, backgroundColor: '#fff' },
-  inputText: { fontSize: 14, color: '#0f172a' },
-  placeholderText: { fontSize: 14, color: '#9ca3af' },
-  textInput: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#0f172a', marginBottom: 14, backgroundColor: '#fff' },
-  textArea: { minHeight: 80, textAlignVertical: 'top' },
-  shiftRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  shiftOption: { flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingVertical: 10, alignItems: 'center', backgroundColor: '#fff' },
-  shiftOptionActive: { backgroundColor: '#0f172a', borderColor: '#0f172a' },
-  shiftOptionText: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  shiftOptionTextActive: { color: '#fff' },
-  submitBtn: { backgroundColor: '#0f172a', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8, marginBottom: 20 },
-  submitBtnDisabled: { opacity: 0.5 },
-  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  pickerContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '60%' },
-  pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  pickerTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
-  pickerItem: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
-  pickerItemSelected: { backgroundColor: '#f0fdf4' },
-  pickerItemText: { fontSize: 14, color: '#374151', fontWeight: '500' },
-  pickerItemTextSelected: { color: '#059669', fontWeight: '700' },
-  pickerItemSub: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
-  statusOptionBtn: { borderWidth: 2, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  statusOptionText: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  currentTag: { fontSize: 11, color: '#9ca3af' },
-  selectedProgramInfo: { backgroundColor: '#f8fafc', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 14, marginTop: -6 },
+  modalBody: { paddingHorizontal: 14, paddingVertical: 10 },
+  modalBodySmall: { padding: 14 },
+  modalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+
+  inputLabel: { fontSize: 11, fontWeight: '700', color: '#334155', textTransform: 'uppercase', marginBottom: 4 },
+  dropdownInput: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    backgroundColor: '#ffffff',
+  },
+  inputText: { fontSize: 12, color: '#0f172a', fontWeight: '500' },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 12,
+    backgroundColor: '#ffffff',
+    color: '#0f172a',
+    marginBottom: 8,
+  },
+
+  shiftBtnRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
+  shiftSelectBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 6,
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  shiftSelectBtnActive: { backgroundColor: '#0f172a', borderColor: '#0f172a' },
+  shiftSelectBtnText: { fontSize: 11, fontWeight: '600', color: '#475569' },
+  shiftSelectBtnTextActive: { color: '#ffffff' },
+
+  // Tasks Builder
+  tasksBox: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#f8fafc',
+    marginBottom: 10,
+  },
+  taskInputRow: { flexDirection: 'row', gap: 6, marginBottom: 6 },
+  taskInput: {
+    flex: 1,
+    height: 32,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    fontSize: 11,
+    backgroundColor: '#ffffff',
+  },
+  taskAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    height: 32,
+  },
+  taskAddBtnDisabled: { opacity: 0.4 },
+  taskAddBtnText: { color: '#ffffff', fontSize: 11, fontWeight: '600' },
+  noTasksAdded: { fontSize: 11, color: '#94a3b8', textAlign: 'center', paddingVertical: 8 },
+  newTodoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: '#ffffff',
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 4,
+    gap: 6,
+  },
+  newTodoNumber: { fontSize: 10, fontWeight: '700', color: '#94a3b8' },
+  newTodoText: { flex: 1, fontSize: 11, color: '#0f172a' },
+
+  hiddenStatusNotice: { fontSize: 10.5, color: '#94a3b8', marginVertical: 6 },
+
+  statusOptionBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statusOptionBtnActive: { borderColor: '#0f172a', backgroundColor: '#f1f5f9' },
+  statusOptionBtnText: { fontSize: 12, fontWeight: '500', color: '#334155' },
+  statusOptionBtnTextActive: { fontWeight: '700', color: '#0f172a' },
+
+  cancelBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  cancelBtnText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
+  submitBtn: {
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  submitBtnDisabled: { opacity: 0.4 },
+  submitBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
 });
 
 export default WorkRegister;
