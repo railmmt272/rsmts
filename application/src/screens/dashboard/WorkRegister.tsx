@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
-  Modal, TextInput, FlatList, Platform
+  Modal, TextInput, FlatList, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -282,7 +282,7 @@ const WorkRegister = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -617,7 +617,10 @@ const WorkRegister = () => {
 
       {/* Modal: Register Shift Work (Create) */}
       <Modal visible={formVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalBox}>
             <View style={styles.modalHeader}>
               <View>
@@ -629,7 +632,7 @@ const WorkRegister = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               {/* Date */}
               <Text style={styles.inputLabel}>Date *</Text>
               <TouchableOpacity
@@ -720,7 +723,7 @@ const WorkRegister = () => {
                 placeholderTextColor="#94a3b8"
                 multiline
                 numberOfLines={2}
-                style={[styles.textInput, { height: 50, textAlignVertical: 'top' }]}
+                style={[styles.textInput, { minHeight: 56, textAlignVertical: 'top' }]}
               />
 
               {/* Note: Overall Status is HIDDEN per client request */}
@@ -744,12 +747,15 @@ const WorkRegister = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal: Change Overall Shift Status */}
       <Modal visible={!!statusModalRecord} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalBoxSmall}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Update Shift Status</Text>
@@ -794,12 +800,15 @@ const WorkRegister = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal: Update Specific To-Do Status */}
       <Modal visible={!!todoModalData} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalBoxSmall}>
             <View style={styles.modalHeader}>
               <View>
@@ -850,7 +859,7 @@ const WorkRegister = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Delete Confirmation Modal */}
@@ -875,29 +884,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 12 : 10,
+    paddingBottom: 12,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
   headerIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 7,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#0f172a' },
   headerSubtitle: { fontSize: 11, color: '#64748b' },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#0f172a',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 7,
   },
   addBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
@@ -918,7 +928,8 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
     borderRadius: 6,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 7,
+    justifyContent: 'center',
   },
   dateBtnText: { fontSize: 12, color: '#94a3b8' },
   dateBtnTextActive: { fontSize: 12, color: '#0f172a', fontWeight: '600' },
@@ -1033,28 +1044,29 @@ const styles = StyleSheet.create({
   todoTrashBtn: { padding: 2 },
 
   // Inline Add
-  inlineAddRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 3 },
+  inlineAddRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 4 },
   inlineInput: {
     flex: 1,
-    height: 28,
+    height: 36,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 6,
-    paddingHorizontal: 8,
-    fontSize: 11,
+    paddingHorizontal: 10,
+    paddingVertical: 0,
+    fontSize: 12,
     backgroundColor: '#f8fafc',
     color: '#0f172a',
   },
   inlineAddBtn: {
     backgroundColor: '#0f172a',
-    paddingHorizontal: 8,
-    height: 28,
+    paddingHorizontal: 12,
+    height: 36,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   inlineAddBtnDisabled: { opacity: 0.4 },
-  inlineAddBtnText: { color: '#ffffff', fontSize: 11, fontWeight: '600' },
+  inlineAddBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
 
   // History Accordion
   historyContainer: { borderTopWidth: 1, borderTopColor: '#f1f5f9' },
@@ -1075,7 +1087,7 @@ const styles = StyleSheet.create({
 
   // Modals
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 14 },
-  modalBox: { backgroundColor: '#ffffff', borderRadius: 12, maxHeight: '88%', overflow: 'hidden' },
+  modalBox: { backgroundColor: '#ffffff', borderRadius: 12, maxHeight: '90%', overflow: 'hidden' },
   modalBoxSmall: { backgroundColor: '#ffffff', borderRadius: 12, overflow: 'hidden' },
   modalHeader: {
     flexDirection: 'row',
@@ -1108,7 +1120,7 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
     borderRadius: 7,
     paddingHorizontal: 10,
-    paddingVertical: 7,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1121,7 +1133,7 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
     borderRadius: 7,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
     fontSize: 12,
     backgroundColor: '#ffffff',
     color: '#0f172a',
@@ -1131,11 +1143,12 @@ const styles = StyleSheet.create({
   shiftBtnRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
   shiftSelectBtn: {
     flex: 1,
-    paddingVertical: 6,
+    height: 36,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 6,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#f8fafc',
   },
   shiftSelectBtnActive: { backgroundColor: '#0f172a', borderColor: '#0f172a' },
@@ -1151,44 +1164,47 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     marginBottom: 10,
   },
-  taskInputRow: { flexDirection: 'row', gap: 6, marginBottom: 6 },
+  taskInputRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
   taskInput: {
     flex: 1,
-    height: 32,
+    height: 38,
     borderWidth: 1,
     borderColor: '#cbd5e1',
     borderRadius: 6,
-    paddingHorizontal: 8,
-    fontSize: 11,
+    paddingHorizontal: 10,
+    paddingVertical: 0,
+    fontSize: 12,
     backgroundColor: '#ffffff',
+    color: '#0f172a',
   },
   taskAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: '#0f172a',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     borderRadius: 6,
-    height: 32,
+    height: 38,
   },
   taskAddBtnDisabled: { opacity: 0.4 },
-  taskAddBtnText: { color: '#ffffff', fontSize: 11, fontWeight: '600' },
+  taskAddBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
   noTasksAdded: { fontSize: 11, color: '#94a3b8', textAlign: 'center', paddingVertical: 8 },
   newTodoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     backgroundColor: '#ffffff',
-    borderRadius: 5,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     marginBottom: 4,
     gap: 6,
   },
-  newTodoNumber: { fontSize: 10, fontWeight: '700', color: '#94a3b8' },
-  newTodoText: { flex: 1, fontSize: 11, color: '#0f172a' },
+  newTodoNumber: { fontSize: 10.5, fontWeight: '700', color: '#94a3b8' },
+  newTodoText: { flex: 1, fontSize: 12, color: '#0f172a' },
 
   hiddenStatusNotice: { fontSize: 10.5, color: '#94a3b8', marginVertical: 6 },
 
@@ -1207,12 +1223,12 @@ const styles = StyleSheet.create({
   statusOptionBtnText: { fontSize: 12, fontWeight: '500', color: '#334155' },
   statusOptionBtnTextActive: { fontWeight: '700', color: '#0f172a' },
 
-  cancelBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  cancelBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 },
   cancelBtnText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
   submitBtn: {
     backgroundColor: '#0f172a',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 6,
   },
   submitBtnDisabled: { opacity: 0.4 },
