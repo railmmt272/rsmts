@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown, Clock } from 'lucide-react';
 import LocationSelectModal from '../CommandCenter/LocationSelectModal';
 import api from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
@@ -82,11 +82,20 @@ export default function ShuntingProgramFormModal({
 
     setSubmitting(true);
     try {
+      const payload: any = {
+        initialPosition,
+        finalPosition,
+        rsType,
+        rsNo,
+        remark,
+        shop,
+      };
+
       if (programToEdit) {
-        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, finalPosition, rsType, rsNo, remark, shop });
+        await api.patch(`/shunting-programs/${programToEdit._id}`, payload);
         toast.success('Request updated successfully');
       } else {
-        await api.post('/shunting-programs', { initialPosition, finalPosition, rsType, rsNo, remark, shop });
+        await api.post('/shunting-programs', payload);
         toast.success('Request added successfully');
       }
       onSuccess();
@@ -232,12 +241,36 @@ export default function ShuntingProgramFormModal({
               <textarea
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
-                rows={4}
+                rows={3}
                 className="block w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white sm:text-sm"
                 placeholder="e.g. Place wagon no. 231xxx345 in WRS 2 shop"
                 required
               />
             </div>
+
+            {/* Informational Timestamps (Automatic) */}
+            {programToEdit && (
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-wrap gap-4 text-xs">
+                <div className="flex items-center gap-1.5 text-gray-600">
+                  <Clock className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Created:</span>
+                  <span className="font-semibold text-gray-900">
+                    {new Date(programToEdit.createdAt).toLocaleDateString('en-GB')},{' '}
+                    {new Date(programToEdit.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
+                </div>
+                {programToEdit.status === 'DONE' && programToEdit.dateMarkedDone && (
+                  <div className="flex items-center gap-1.5 text-emerald-700">
+                    <Clock className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Completed:</span>
+                    <span className="font-semibold text-emerald-900">
+                      {new Date(programToEdit.dateMarkedDone).toLocaleDateString('en-GB')},{' '}
+                      {new Date(programToEdit.dateMarkedDone).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
             
           </form>
         </div>

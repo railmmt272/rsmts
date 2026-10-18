@@ -254,42 +254,42 @@ export default function ShuntingProgramsPage() {
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 bg-gray-50 z-10 shadow-sm">
               <tr className="border-b border-gray-200">
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">
                   S.No
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
-                  Date
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-36">
+                  Creation Time
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">
                   Shop
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-44">
                   Initial Position
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-44">
                   Final Position
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">
                   RS Type
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">
                   RS No.
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
-                  Date Marked Done
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-36">
+                  Completion Time
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-32 text-center">
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28 text-center">
                   Status
                 </th>
-                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider w-24 text-center">
+                <th className="py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-24 text-center">
                   Action
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                  <td colSpan={10} className="py-8 text-center text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <div className="animate-spin h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full" />
                       Loading programs...
@@ -298,7 +298,7 @@ export default function ShuntingProgramsPage() {
                 </tr>
               ) : filteredAndSortedPrograms.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-500">
+                  <td colSpan={10} className="py-12 text-center text-gray-500">
                     <ListTodo className="h-12 w-12 mx-auto text-gray-300 mb-3" />
                     <p className="text-lg font-medium text-gray-900">No requests found</p>
                     <p>Try adjusting your filters or click "Add New Request" to create one.</p>
@@ -307,37 +307,63 @@ export default function ShuntingProgramsPage() {
               ) : (
                 currentPrograms.map((program, index) => {
                   const isExpanded = expandedRemarks.has(program._id);
+                  const createdDate = new Date(program.createdAt);
+                  const doneDate = program.dateMarkedDone ? new Date(program.dateMarkedDone) : null;
+
                   return (
                     <Fragment key={program._id}>
                       <tr 
                         className="hover:bg-gray-50 transition-colors cursor-pointer"
                         onDoubleClick={() => toggleRemark(program._id)}
                       >
-                        <td className="py-4 px-6 text-sm text-gray-500">
-                        {(currentPage - 1) * itemsPerPage + index + 1}
-                      </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">
-                        {new Date(program.createdAt).toLocaleDateString('en-GB')}
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">{program.shop}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">{program.initialPosition}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">{program.finalPosition || '-'}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">{program.rsType}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">{program.rsNo}</span>
-                      </td>
+                        <td className="py-3 px-5 text-xs text-gray-500">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </td>
+                        <td className="py-3 px-5 text-xs">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-gray-900">
+                              {!isNaN(createdDate.getTime()) ? createdDate.toLocaleDateString('en-GB') : '-'}
+                            </span>
+                            <span className="text-[11px] text-gray-500 font-medium flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3 text-gray-400" />
+                              {!isNaN(createdDate.getTime()) ? createdDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-5">
+                          <span className="text-xs font-semibold text-gray-900">{program.shop}</span>
+                        </td>
+                        <td className="py-3 px-5">
+                          <span className="text-xs font-medium text-gray-900">{program.initialPosition}</span>
+                        </td>
+                        <td className="py-3 px-5">
+                          <span className="text-xs font-medium text-gray-900">{program.finalPosition || '-'}</span>
+                        </td>
+                        <td className="py-3 px-5">
+                          <span className="text-xs font-medium text-gray-900">{program.rsType}</span>
+                        </td>
+                        <td className="py-3 px-5">
+                          <span className="text-xs font-bold text-gray-900">{program.rsNo}</span>
+                        </td>
 
-                      <td className="py-4 px-6 text-sm text-gray-500">
-                        {program.dateMarkedDone ? new Date(program.dateMarkedDone).toLocaleDateString('en-GB') : '-'}
-                      </td>
+                        <td className="py-3 px-5 text-xs">
+                          {program.status === 'DONE' && doneDate && !isNaN(doneDate.getTime()) ? (
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-emerald-900">
+                                {doneDate.toLocaleDateString('en-GB')}
+                              </span>
+                              <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3 text-emerald-500" />
+                                {doneDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              <Clock className="w-3 h-3 text-amber-500" />
+                              Pending
+                            </span>
+                          )}
+                        </td>
                       <td className="py-4 px-6 text-center">
                         <button
                           onClick={() => {

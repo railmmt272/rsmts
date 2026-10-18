@@ -16,6 +16,15 @@ const formatLocalDate = (d: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+const formatDateTime = (dateStr?: string | Date) => {
+  if (!dateStr) return { date: '-', time: '-' };
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return { date: '-', time: '-' };
+  const date = d.toLocaleDateString('en-GB');
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return { date, time };
+};
+
 interface ShuntingProgram {
   _id: string;
   initialPosition: string;
@@ -237,10 +246,25 @@ const ShuntingPrograms = () => {
     setSubmitting(true);
     try {
       if (programToEdit) {
-        await api.patch(`/shunting-programs/${programToEdit._id}`, { initialPosition, finalPosition: finalPosition || undefined, rsType, rsNo, shop, remark });
+        await api.patch(`/shunting-programs/${programToEdit._id}`, {
+          initialPosition,
+          finalPosition: finalPosition || undefined,
+          rsType,
+          rsNo,
+          shop,
+          remark,
+        });
         Toast.show({ type: 'success', text1: 'Updated', text2: 'Program updated successfully' });
       } else {
-        await api.post('/shunting-programs', { initialPosition, finalPosition: finalPosition || undefined, rsType, rsNo, shop, remark, status: 'PENDING' });
+        await api.post('/shunting-programs', {
+          initialPosition,
+          finalPosition: finalPosition || undefined,
+          rsType,
+          rsNo,
+          shop,
+          remark,
+          status: 'PENDING',
+        });
         Toast.show({ type: 'success', text1: 'Created', text2: 'Program created successfully' });
       }
       setModalVisible(false);
@@ -383,12 +407,17 @@ const ShuntingPrograms = () => {
               style={styles.card}
             >
               <View style={styles.cardHeader}>
-                <Text style={styles.cardDate}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Clock size={12} color="#64748b" style={{ marginRight: 4 }} />
+                  <Text style={styles.cardDate}>
+                    {formatDateTime(item.createdAt).date}, {formatDateTime(item.createdAt).time}
+                  </Text>
+                </View>
                 <TouchableOpacity 
                   style={[styles.statusBadge, item.status === 'DONE' ? styles.statusBadgeDone : styles.statusBadgePending]}
                   onPress={() => toggleStatus(item)}
                 >
-                  {item.status === 'DONE' ? <CheckCircle2 size={14} color="#059669" /> : <Clock size={14} color="#d97706" />}
+                  {item.status === 'DONE' ? <CheckCircle2 size={13} color="#059669" /> : <Clock size={13} color="#d97706" />}
                   <Text style={[styles.statusText, item.status === 'DONE' ? styles.statusTextDone : styles.statusTextPending]}>
                     {item.status === 'DONE' ? 'Done' : 'Pending'}
                   </Text>
@@ -418,12 +447,18 @@ const ShuntingPrograms = () => {
                     <Text style={styles.cardValue}>{item.finalPosition}</Text>
                   </View>
                 )}
-                {item.status === 'DONE' && item.dateMarkedDone && (
-                  <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-                    <Text style={styles.cardLabel}>Done Date:</Text>
-                    <Text style={styles.cardValue}>{new Date(item.dateMarkedDone).toLocaleDateString()}</Text>
-                  </View>
-                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={styles.cardLabel}>Completed:</Text>
+                  {item.status === 'DONE' && item.dateMarkedDone ? (
+                    <Text style={[styles.cardValue, { color: '#059669', fontWeight: '600' }]}>
+                      {formatDateTime(item.dateMarkedDone).date}, {formatDateTime(item.dateMarkedDone).time}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.cardValue, { color: '#d97706', fontStyle: 'italic' }]}>
+                      Pending
+                    </Text>
+                  )}
+                </View>
                 {expandedCards.has(item._id) && (
                   <View style={{ marginTop: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#3b82f6' }}>
                     <Text style={[styles.cardLabel, { marginBottom: 4 }]}>Remarks:</Text>
@@ -525,8 +560,30 @@ const ShuntingPrograms = () => {
                 onChangeText={setRemark}
                 placeholderTextColor="#9ca3af"
                 multiline
-                numberOfLines={4}
+                numberOfLines={3}
               />
+
+              {/* Informational Timestamps (Automatic) */}
+              {programToEdit && (
+                <View style={{ marginTop: 12, padding: 12, backgroundColor: '#f8fafc', borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: programToEdit.status === 'DONE' && programToEdit.dateMarkedDone ? 4 : 0 }}>
+                    <Clock size={12} color="#64748b" style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 12, color: '#64748b' }}>Created: </Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#0f172a' }}>
+                      {formatDateTime(programToEdit.createdAt).date}, {formatDateTime(programToEdit.createdAt).time}
+                    </Text>
+                  </View>
+                  {programToEdit.status === 'DONE' && programToEdit.dateMarkedDone && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Clock size={12} color="#059669" style={{ marginRight: 6 }} />
+                      <Text style={{ fontSize: 12, color: '#059669' }}>Completed: </Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#065f46' }}>
+                        {formatDateTime(programToEdit.dateMarkedDone).date}, {formatDateTime(programToEdit.dateMarkedDone).time}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
               
               <TouchableOpacity 
                 style={[styles.submitBtn, (!initialPosition.trim() || !shop.trim() || !rsType.trim() || !rsNo.trim() || !remark.trim() || submitting) && styles.submitBtnDisabled]} 

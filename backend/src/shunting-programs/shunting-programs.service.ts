@@ -12,10 +12,14 @@ export class ShuntingProgramsService {
   ) {}
 
   async create(createShuntingProgramDto: CreateShuntingProgramDto, userId: string): Promise<ShuntingProgram> {
-    const newProgram = new this.shuntingProgramModel({
+    const programData: any = {
       ...createShuntingProgramDto,
       createdBy: userId,
-    });
+    };
+    if (createShuntingProgramDto.createdAt) {
+      programData.createdAt = new Date(createShuntingProgramDto.createdAt);
+    }
+    const newProgram = new this.shuntingProgramModel(programData);
     return newProgram.save();
   }
 
@@ -43,9 +47,23 @@ export class ShuntingProgramsService {
   async update(id: string, updateShuntingProgramDto: UpdateShuntingProgramDto): Promise<ShuntingProgram> {
     const updateData: any = { ...updateShuntingProgramDto };
     if (updateData.status === 'DONE') {
-      updateData.dateMarkedDone = new Date();
+      if (updateData.dateMarkedDone) {
+        updateData.dateMarkedDone = new Date(updateData.dateMarkedDone);
+      } else {
+        const current = await this.shuntingProgramModel.findById(id).select('dateMarkedDone status').exec();
+        if (current && current.status === 'DONE' && current.dateMarkedDone) {
+          updateData.dateMarkedDone = current.dateMarkedDone;
+        } else {
+          updateData.dateMarkedDone = new Date();
+        }
+      }
     } else if (updateData.status === 'PENDING') {
       updateData.dateMarkedDone = null;
+    } else if (updateData.dateMarkedDone) {
+      updateData.dateMarkedDone = new Date(updateData.dateMarkedDone);
+    }
+    if (updateData.createdAt) {
+      updateData.createdAt = new Date(updateData.createdAt);
     }
 
     const existingProgram = await this.shuntingProgramModel

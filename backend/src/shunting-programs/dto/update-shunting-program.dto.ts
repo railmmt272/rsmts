@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsOptional, IsDateString } from 'class-validator';
 
 export class UpdateShuntingProgramDto {
   @IsOptional()
@@ -32,4 +32,12 @@ export class UpdateShuntingProgramDto {
   @IsOptional()
   @IsEnum(['PENDING', 'DONE'])
   status?: string;
+
+  @IsOptional()
+  @IsDateString()
+  createdAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateMarkedDone?: string;
 }
